@@ -1,5 +1,4 @@
 import functools
-import os
 
 from flask_sqlalchemy import BaseQuery, SQLAlchemy
 from sqlalchemy.dialects.postgresql import UUID
@@ -30,8 +29,8 @@ class RedashSQLAlchemy(SQLAlchemy):
         return options
 
 md = None
-if os.environ.get('REDASH_NAMESPACE'):
-   md = MetaData(schema=os.environ['REDASH_NAMESPACE'])
+if settings.SQLALCHEMY_DATABASE_SCHEMA:
+   md = MetaData(schema=settings.SQLALCHEMY_DATABASE_SCHEMA)
 
 db = RedashSQLAlchemy(session_options={"expire_on_commit": False}, metadata=md)
 
