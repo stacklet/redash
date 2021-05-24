@@ -1,7 +1,9 @@
 import functools
+import os
 
 from flask_sqlalchemy import BaseQuery, SQLAlchemy
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import MetaData
 from sqlalchemy.orm import object_session
 from sqlalchemy.pool import NullPool
 from sqlalchemy_searchable import SearchQueryMixin, make_searchable, vectorizer
@@ -27,11 +29,19 @@ class RedashSQLAlchemy(SQLAlchemy):
             options.pop("max_overflow", None)
         return options
 
+md = None
+if os.environ.get('REDASH_NAMESPACE'):
+   md = MetaData(schema=os.environ['REDASH_NAMESPACE'])
 
+db = RedashSQLAlchemy(session_options={"expire_on_commit": False}, metadata=md)
+
+<<<<<<< HEAD
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
     engine_options={"json_serializer": json_dumps, "json_deserializer": json_loads},
 )
+=======
+>>>>>>> 13fcfe30f (redash schema namespace)
 # Make sure the SQLAlchemy mappers are all properly configured first.
 # This is required by SQLAlchemy-Searchable as it adds DDL listeners
 # on the configuration phase of models.
