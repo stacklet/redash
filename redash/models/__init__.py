@@ -38,7 +38,9 @@ from redash.utils import (
     mustache_render,
     base_url,
     sentry,
-    gen_query_hash)
+    gen_query_hash,
+    prefix_schema,
+)
 from redash.utils.configuration import ConfigurationContainer
 from redash.models.parameterized_query import ParameterizedQuery
 
@@ -759,10 +761,13 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
 
     @classmethod
     def all_groups_for_query_ids(cls, query_ids):
-        query = """SELECT group_id, view_only
-                   FROM queries
-                   JOIN data_source_groups ON queries.data_source_id = data_source_groups.data_source_id
-                   WHERE queries.id in :ids"""
+        data_source_groups = prefix_schema("data_source_groups")
+        queries = prefix_schema("queries")
+
+        query = f"""SELECT group_id, view_only
+                   FROM {queries}
+                   JOIN {data_source_groups} ON {queries}.data_source_id = {data_source_groups}.data_source_id
+                   WHERE {queries}.id in :ids"""
 
         return db.session.execute(query, {"ids": tuple(query_ids)}).fetchall()
 
