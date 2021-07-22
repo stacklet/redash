@@ -1,4 +1,6 @@
 import time
+import os
+from urllib.parse import urlparse
 
 from click import argument, option
 from flask.cli import AppGroup
@@ -7,6 +9,7 @@ import sqlalchemy
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import select
 from sqlalchemy_utils.types.encrypted.encrypted_type import FernetEngine
+import boto3
 
 from redash import settings
 from redash.models.base import Column, key_type
@@ -14,6 +17,39 @@ from redash.models.types import EncryptedConfiguration
 from redash.utils.configuration import ConfigurationContainer
 
 manager = AppGroup(help="Manage the database (create/drop tables. reencrypt data.).")
+
+DBIAM_USER = os.environ["REDASH_DBIAM_USER"]
+DBURI_TEMPLATE = os.environ["REDASH_DATABASE_URL"]
+
+
+def get_db_auth_token(username, hostname, port):
+    return boto3.client("rds").generate_db_auth_token(
+        DBHostname=hostname, Port=port, DBUsername=username
+    )
+
+
+def get_iam_auth_dburi():
+    global DBURI_TEMPLATE, DBIAM_USER
+    db = urlparse(DBURI_TEMPLATE)
+    db_cred = {
+        "user": DBIAM_USER,
+        "password": get_db_auth_token(DBIAM_USER, db.hostname, db.port),
+    }
+    return DBURI_TEMPLATE.format(**db_cred)
+
+
+def redash_user_grant(engine, redash_engine):
+    username = redash_engine.url.username
+    password = redash_engine.url.password
+
+    with engine.connect() as conn:
+        conn.execute(f"CREATE USER IF NOT EXISTS {username} WITH PASSWORD '{password}'")
+        conn.execute(
+            f"GRANT USAGE ON SCHEMA {settings.SQLALCHEMY_DATABASE_SCHEMA} TO {username}"
+        )
+        conn.execute(
+            f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {settings.SQLALCHEMY_DATABASE_SCHEMA} TO {username}"
+        )
 
 
 def _wait_for_db_connection(db):
@@ -59,6 +95,10 @@ def create_tables():
                     f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
                 ),
             )
+
+        iam_db_uri = get_iam_auth_dburi()
+        grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
+        redash_user_grant(grant_engine, db.engine)
 
         _wait_for_db_connection(db)
 
