@@ -26,11 +26,9 @@ WRITER_ENCODING = os.environ.get("REDASH_CSV_WRITER_ENCODING", "utf-8")
 WRITER_ERRORS = os.environ.get("REDASH_CSV_WRITER_ERRORS", "strict")
 
 
-def prefix_schema(table):
+def get_schema():
     """Returns a table name prefixed with the database schema if one is set."""
-    if settings.SQLALCHEMY_DATABASE_SCHEMA == "":
-        return table
-    return f"{settings.SQLALCHEMY_DATABASE_SCHEMA}.{table}"
+    return settings.SQLALCHEMY_DATABASE_SCHEMA
 
 
 def utcnow():

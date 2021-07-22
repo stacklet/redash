@@ -10,8 +10,7 @@ import simplejson
 from alembic import op
 import sqlalchemy as sa
 
-from redash.models import Dashboard, Widget, db
-from redash.utils import prefix_schema
+from redash.models import db
 
 # revision identifiers, used by Alembic.
 revision = "969126bd800f"
@@ -21,13 +20,11 @@ depends_on = None
 
 
 def upgrade():
-    dashboards = prefix_schema("dashboards")
-    widgets = prefix_schema("widgets")
 
     # Update widgets position data:
     column_size = 3
     print("Updating dashboards position data:")
-    dashboard_result = db.session.execute(f"SELECT id, layout FROM {dashboards}")
+    dashboard_result = db.session.execute("SELECT id, layout FROM dashboards")
     for dashboard in dashboard_result:
         print("  Updating dashboard: {}".format(dashboard["id"]))
         layout = simplejson.loads(dashboard["layout"])
@@ -35,7 +32,7 @@ def upgrade():
         print("    Building widgets map:")
         widgets = {}
         widget_result = db.session.execute(
-            f"SELECT id, options, width FROM {widgets} WHERE dashboard_id=:dashboard_id",
+            "SELECT id, options, width FROM widgets WHERE dashboard_id=:dashboard_id",
             {"dashboard_id": dashboard["id"]},
         )
         for w in widget_result:
@@ -64,7 +61,7 @@ def upgrade():
                 }
 
                 db.session.execute(
-                    f"UPDATE {widgets} SET options=:options WHERE id=:id",
+                    "UPDATE widgets SET options=:options WHERE id=:id",
                     {"options": simplejson.dumps(options), "id": widget_id},
                 )
 
@@ -72,18 +69,16 @@ def upgrade():
     db.session.commit()
 
     # Remove legacy columns no longer in use.
-    op.drop_column(f"{widgets}", "type")
-    op.drop_column(f"{widgets}", "query_id")
+    op.drop_column("widgets", "type")
+    op.drop_column("widgets", "query_id")
 
 
 def downgrade():
-    widgets = prefix_schema("widgets")
-
     op.add_column(
-        f"{widgets}",
+        "widgets",
         sa.Column("query_id", sa.INTEGER(), autoincrement=False, nullable=True),
     )
     op.add_column(
-        f"{widgets}",
+        "widgets",
         sa.Column("type", sa.VARCHAR(length=100), autoincrement=False, nullable=True),
     )

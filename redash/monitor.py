@@ -4,7 +4,7 @@ from funcy import flatten
 from sqlalchemy import union_all
 from redash import redis_connection, rq_redis_connection, __version__, settings
 from redash.models import db, DataSource, Query, QueryResult, Dashboard, Widget
-from redash.utils import json_loads, prefix_schema
+from redash.utils import json_loads
 from rq import Queue, Worker
 from rq.job import Job
 from rq.registry import StartedJobRegistry
@@ -37,12 +37,11 @@ def get_queues_status():
 
 
 def get_db_sizes():
-    query_results = prefix_schema("query_results")
     database_metrics = []
     queries = [
         [
             "Query Results Size",
-            f"select pg_total_relation_size('{query_results}') as size from (select 1) as a",
+            "select pg_total_relation_size('query_results') as size from (select 1) as a",
         ],
         ["Redash DB Size", "select pg_database_size(current_database()) as size"],
     ]

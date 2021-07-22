@@ -6,7 +6,6 @@ Create Date: 2018-05-10 15:47:56.120338
 
 """
 import re
-from redash.utils import prefix_schema
 from funcy import flatten, compact
 from alembic import op
 import sqlalchemy as sa
@@ -22,14 +21,12 @@ depends_on = None
 
 
 def upgrade():
-    dashboards = prefix_schema("dashboards")
-
     tags_regex = re.compile("^([\w\s]+):|#([\w-]+)", re.I | re.U)
     connection = op.get_bind()
 
-    dashboards = connection.execute(f"SELECT id, name FROM {dashboards}")
+    dashboards = connection.execute("SELECT id, name FROM dashboards")
 
-    update_query = text("UPDATE {dashboards} SET tags = :tags WHERE id = :id")
+    update_query = text("UPDATE dashboards SET tags = :tags WHERE id = :id")
 
     for dashboard in dashboards:
         tags = compact(flatten(tags_regex.findall(dashboard[1])))
