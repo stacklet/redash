@@ -43,6 +43,9 @@ def redash_user_grant(engine, redash_engine):
     password = redash_engine.url.password
 
     with engine.connect() as conn:
+        conn.execute(
+            f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
+        )
         conn.execute(f"CREATE USER IF NOT EXISTS {username} WITH PASSWORD '{password}'")
         conn.execute(
             f"GRANT USAGE ON SCHEMA {settings.SQLALCHEMY_DATABASE_SCHEMA} TO {username}"
@@ -83,6 +86,10 @@ def create_tables():
     """Create the database tables."""
     from redash.models import db
 
+    iam_db_uri = get_iam_auth_dburi()
+    grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
+    redash_user_grant(grant_engine, db.engine)
+
     if is_db_empty():
         if settings.SQLALCHEMY_DATABASE_SCHEMA:
             from sqlalchemy import DDL
@@ -95,10 +102,6 @@ def create_tables():
                     f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
                 ),
             )
-
-            iam_db_uri = get_iam_auth_dburi()
-            grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
-            redash_user_grant(grant_engine, db.engine)
 
         _wait_for_db_connection(db)
 
