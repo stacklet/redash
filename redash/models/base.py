@@ -34,7 +34,9 @@ if settings.SQLALCHEMY_DATABASE_SCHEMA:
 
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
-    engine_options={"schema_translate_map": {None: get_schema()}},
+    engine_options={
+        "execution_options": {"schema_translate_map": {None: get_schema()}}
+    },
     metadata=md,
 )
 
