@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy_searchable import SearchQueryMixin, make_searchable, vectorizer
 
 from redash import settings
-from redash.utils import json_dumps, json_loads
+from redash.utils import json_dumps, json_loads, get_schema
 
 
 class RedashSQLAlchemy(SQLAlchemy):
@@ -28,19 +28,19 @@ class RedashSQLAlchemy(SQLAlchemy):
             options.pop("max_overflow", None)
         return options
 
+
 md = None
 if settings.SQLALCHEMY_DATABASE_SCHEMA:
-   md = MetaData(schema=settings.SQLALCHEMY_DATABASE_SCHEMA)
+    md = MetaData(schema=settings.SQLALCHEMY_DATABASE_SCHEMA)
 
-db = RedashSQLAlchemy(session_options={"expire_on_commit": False}, metadata=md)
-
-<<<<<<< HEAD
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
-    engine_options={"json_serializer": json_dumps, "json_deserializer": json_loads},
+    engine_options={
+        "execution_options": {"schema_translate_map": {None: get_schema()}}
+    },
+    metadata=md,
 )
-=======
->>>>>>> 13fcfe30f (redash schema namespace)
+
 # Make sure the SQLAlchemy mappers are all properly configured first.
 # This is required by SQLAlchemy-Searchable as it adds DDL listeners
 # on the configuration phase of models.
