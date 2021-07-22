@@ -6,8 +6,6 @@ from redash import __version__ as current_version
 from redash import redis_connection
 from redash.models import db, Organization
 from redash.utils import json_dumps
-from redash import settings
-
 
 REDIS_KEY = "new_version_available"
 

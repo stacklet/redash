@@ -10,7 +10,8 @@ import simplejson
 from alembic import op
 import sqlalchemy as sa
 
-from redash.models import db
+from redash.models import Dashboard, Widget, db
+
 
 # revision identifiers, used by Alembic.
 revision = "969126bd800f"
@@ -20,7 +21,6 @@ depends_on = None
 
 
 def upgrade():
-
     # Update widgets position data:
     column_size = 3
     print("Updating dashboards position data:")

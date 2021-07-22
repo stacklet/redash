@@ -38,8 +38,7 @@ from redash.utils import (
     mustache_render,
     base_url,
     sentry,
-    gen_query_hash,
-)
+    gen_query_hash)
 from redash.utils.configuration import ConfigurationContainer
 from redash.models.parameterized_query import ParameterizedQuery
 
