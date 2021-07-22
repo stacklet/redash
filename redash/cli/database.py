@@ -96,9 +96,9 @@ def create_tables():
                 ),
             )
 
-        iam_db_uri = get_iam_auth_dburi()
-        grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
-        redash_user_grant(grant_engine, db.engine)
+            iam_db_uri = get_iam_auth_dburi()
+            grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
+            redash_user_grant(grant_engine, db.engine)
 
         _wait_for_db_connection(db)
 
