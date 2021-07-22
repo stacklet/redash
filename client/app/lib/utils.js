@@ -51,7 +51,7 @@ export function localizeTime(time) {
     .utc()
     .hour(hrs)
     .minute(mins)
-    .locale()
+    .local()
     .format("HH:mm");
 }
 
