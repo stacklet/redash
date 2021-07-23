@@ -1,7 +1,4 @@
 import time
-import os
-from urllib.parse import urlparse
-from pathlib import Path
 
 from click import argument, option
 from flask.cli import AppGroup
@@ -10,78 +7,14 @@ import sqlalchemy
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import select
 from sqlalchemy_utils.types.encrypted.encrypted_type import FernetEngine
-import boto3
-import psycopg2
-from psycopg2.extensions import parse_dsn
 
 from redash import settings
 from redash.models.base import Column, key_type
 from redash.models.types import EncryptedConfiguration
 from redash.utils.configuration import ConfigurationContainer
+from redash.db.rds import DBIAM_USER, redash_user_grant
 
 manager = AppGroup(help="Manage the database (create/drop tables. reencrypt data.).")
-
-DBIAM_USER = os.environ["REDASH_DBIAM_USER"]
-DBURI_TEMPLATE = os.environ["REDASH_DATABASE_URL"]
-
-
-def get_db_auth_token(username, hostname, port):
-    return boto3.client("rds").generate_db_auth_token(
-        DBHostname=hostname, Port=port, DBUsername=username
-    )
-
-
-def get_iam_auth_dsn(dburi, dbiam):
-    rds_pem = Path("/app/rds-combined-ca-bundle.pem")
-    print("FILE", rds_pem.is_file())
-    db = urlparse(dburi)
-    dsn = parse_dsn(dburi)
-    dsn["user"] = dbiam
-    dsn["password"] = get_db_auth_token(dbiam, db.hostname, db.port)
-    dsn["sslmode"] = "require"
-    dsn["sslrootcert"] = "/app/rds-combined-ca-bundle.pem"
-    return dsn
-
-
-def create_do_connect_handler(dburi, dbiam):
-    def handler(dialect, conn_rec, cargs, cparams):
-        dsn = parse_dsn(dburi)
-        dsn = get_iam_auth_dsn(dburi, dbiam)
-        print(dsn)
-        return psycopg2.connect(**dsn)
-
-    return handler
-
-
-def get_db(dburi, dbiam):
-    if "postgresql" in dburi:
-        engine = sqlalchemy.create_engine("postgresql://")
-        sqlalchemy.event.listen(
-            engine, "do_connect", create_do_connect_handler(dburi, dbiam)
-        )
-        return engine
-
-    engine = sqlalchemy.create_engine(dburi)
-    return engine
-
-
-def redash_user_grant(redash_engine):
-    iam_engine = get_db(DBURI_TEMPLATE, DBIAM_USER)
-
-    username = redash_engine.url.username
-    password = redash_engine.url.password
-
-    with iam_engine.connect() as conn:
-        conn.execute(
-            f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
-        )
-        conn.execute(f"CREATE USER IF NOT EXISTS {username} WITH PASSWORD '{password}'")
-        conn.execute(
-            f"GRANT USAGE ON SCHEMA {settings.SQLALCHEMY_DATABASE_SCHEMA} TO {username}"
-        )
-        conn.execute(
-            f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {settings.SQLALCHEMY_DATABASE_SCHEMA} TO {username}"
-        )
 
 
 def _wait_for_db_connection(db):
@@ -115,21 +48,10 @@ def create_tables():
     """Create the database tables."""
     from redash.models import db
 
-    redash_user_grant(db.engine)
+    if DBIAM_USER:
+        redash_user_grant(db.engine)
 
     if is_db_empty():
-        if settings.SQLALCHEMY_DATABASE_SCHEMA:
-            from sqlalchemy import DDL
-            from sqlalchemy import event
-
-            event.listen(
-                db.metadata,
-                "before_create",
-                DDL(
-                    f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
-                ),
-            )
-
         _wait_for_db_connection(db)
 
         # We need to make sure we run this only if the DB is empty, because otherwise calling
