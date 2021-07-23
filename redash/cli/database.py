@@ -35,8 +35,8 @@ def get_iam_auth_dsn(dburi, dbiam):
     dsn = parse_dsn(dburi)
     dsn["user"] = dbiam
     dsn["password"] = get_db_auth_token(dbiam, db.hostname, db.port)
-    # dsn["sslmode"] = "prefer"
-    # dsn["sslrootcert"] = "/src/stacklet/assetdb/files/aws/rds-combined-ca-bundle.pem"
+    dsn["sslmode"] = "prefer"
+    dsn["sslrootcert"] = "/app/rds-combined-ca-bundle.pem"
     return dsn
 
 
