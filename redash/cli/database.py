@@ -18,8 +18,8 @@ from redash.utils.configuration import ConfigurationContainer
 
 manager = AppGroup(help="Manage the database (create/drop tables. reencrypt data.).")
 
-DBIAM_USER = os.environ["REDASH_DBIAM_USER"]
-DBURI_TEMPLATE = os.environ["REDASH_DATABASE_URL"]
+DBIAM_USER = "assetdb"  # os.environ["REDASH_DBIAM_USER"]
+DBURI_TEMPLATE = "postgresql://{user}:{password}@assetdb.csowsmcthnij.us-east-2.rds.amazonaws.com:5432/assetdb"  # os.environ["REDASH_DATABASE_URL"]
 
 
 def get_db_auth_token(username, hostname, port):
@@ -38,11 +38,15 @@ def get_iam_auth_dburi():
     return DBURI_TEMPLATE.format(**db_cred)
 
 
-def redash_user_grant(engine, redash_engine):
+def redash_user_grant(redash_engine):
+    iam_db_uri = get_iam_auth_dburi()
+    print(iam_db_uri)
+    iam_engine = sqlalchemy.engine.create_engine(iam_db_uri)
+
     username = redash_engine.url.username
     password = redash_engine.url.password
 
-    with engine.connect() as conn:
+    with iam_engine.connect() as conn:
         conn.execute(
             f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
         )
@@ -86,9 +90,7 @@ def create_tables():
     """Create the database tables."""
     from redash.models import db
 
-    iam_db_uri = get_iam_auth_dburi()
-    grant_engine = sqlalchemy.engine.create_engine(iam_db_uri)
-    redash_user_grant(grant_engine, db.engine)
+    redash_user_grant(db.engine)
 
     if is_db_empty():
         if settings.SQLALCHEMY_DATABASE_SCHEMA:
