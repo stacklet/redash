@@ -35,7 +35,7 @@ def get_iam_auth_dsn(dburi, dbiam):
     dsn = parse_dsn(dburi)
     dsn["user"] = dbiam
     dsn["password"] = get_db_auth_token(dbiam, db.hostname, db.port)
-    dsn["sslmode"] = "prefer"
+    dsn["sslmode"] = "require"
     dsn["sslrootcert"] = "/app/rds-combined-ca-bundle.pem"
     return dsn
 
