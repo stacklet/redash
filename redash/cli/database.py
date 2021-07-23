@@ -10,6 +10,8 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import select
 from sqlalchemy_utils.types.encrypted.encrypted_type import FernetEngine
 import boto3
+import psycopg2
+from psycopg2.extensions import parse_dsn
 
 from redash import settings
 from redash.models.base import Column, key_type
@@ -28,20 +30,40 @@ def get_db_auth_token(username, hostname, port):
     )
 
 
-def get_iam_auth_dburi():
-    global DBURI_TEMPLATE, DBIAM_USER
-    db = urlparse(DBURI_TEMPLATE)
-    db_cred = {
-        "user": DBIAM_USER,
-        "password": get_db_auth_token(DBIAM_USER, db.hostname, db.port),
-    }
-    return DBURI_TEMPLATE.format(**db_cred)
+def get_iam_auth_dsn(dburi, dbiam):
+    db = urlparse(dburi)
+    dsn = parse_dsn(dburi)
+    dsn["user"] = dbiam
+    dsn["password"] = get_db_auth_token(dbiam, db.hostname, db.port)
+    # dsn["sslmode"] = "prefer"
+    # dsn["sslrootcert"] = "/src/stacklet/assetdb/files/aws/rds-combined-ca-bundle.pem"
+    return dsn
+
+
+def create_do_connect_handler(dburi, dbiam):
+    def handler(dialect, conn_rec, cargs, cparams):
+        dsn = parse_dsn(dburi)
+        dsn = get_iam_auth_dsn(dburi, dbiam)
+        return psycopg2.connect(**dsn)
+
+    return handler
+
+
+def get_db(dburi, dbiam):
+    if "postgresql" in dburi:
+        engine = sqlalchemy.create_engine("postgresql://")
+        sqlalchemy.event.listen(
+            engine, "do_connect", create_do_connect_handler(dburi, dbiam)
+        )
+        return engine
+
+    engine = sqlalchemy.create_engine(dburi)
+    return engine
 
 
 def redash_user_grant(redash_engine):
-    iam_db_uri = get_iam_auth_dburi()
-    print(iam_db_uri)
-    iam_engine = sqlalchemy.engine.create_engine(iam_db_uri)
+    iam_engine = get_db(DBURI_TEMPLATE, DBIAM_USER)
+    print(iam_engine.url)
 
     username = redash_engine.url.username
     password = redash_engine.url.password
