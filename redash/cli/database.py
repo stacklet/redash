@@ -44,6 +44,7 @@ def create_do_connect_handler(dburi, dbiam):
     def handler(dialect, conn_rec, cargs, cparams):
         dsn = parse_dsn(dburi)
         dsn = get_iam_auth_dsn(dburi, dbiam)
+        print(dsn)
         return psycopg2.connect(**dsn)
 
     return handler
@@ -63,7 +64,6 @@ def get_db(dburi, dbiam):
 
 def redash_user_grant(redash_engine):
     iam_engine = get_db(DBURI_TEMPLATE, DBIAM_USER)
-    print(iam_engine.url)
 
     username = redash_engine.url.username
     password = redash_engine.url.password
