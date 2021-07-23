@@ -1,6 +1,7 @@
 import time
 import os
 from urllib.parse import urlparse
+from pathlib import Path
 
 from click import argument, option
 from flask.cli import AppGroup
@@ -20,8 +21,8 @@ from redash.utils.configuration import ConfigurationContainer
 
 manager = AppGroup(help="Manage the database (create/drop tables. reencrypt data.).")
 
-DBIAM_USER = "assetdb"  # os.environ["REDASH_DBIAM_USER"]
-DBURI_TEMPLATE = "postgresql://{user}:{password}@assetdb.csowsmcthnij.us-east-2.rds.amazonaws.com:5432/assetdb"  # os.environ["REDASH_DATABASE_URL"]
+DBIAM_USER = os.environ["REDASH_DBIAM_USER"]
+DBURI_TEMPLATE = os.environ["REDASH_DATABASE_URL"]
 
 
 def get_db_auth_token(username, hostname, port):
@@ -31,6 +32,8 @@ def get_db_auth_token(username, hostname, port):
 
 
 def get_iam_auth_dsn(dburi, dbiam):
+    rds_pem = Path("/app/rds-combined-ca-bundle.pem")
+    print("FILE", rds_pem.is_file())
     db = urlparse(dburi)
     dsn = parse_dsn(dburi)
     dsn["user"] = dbiam
