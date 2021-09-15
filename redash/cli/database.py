@@ -33,7 +33,7 @@ def is_db_empty():
 
     extant_tables = set(
         sqlalchemy.inspect(
-            db.create_engine(settings.SQLALCHEMY_DATABASE_URI)
+            db.create_engine(settings.SQLALCHEMY_DATABASE_URI, {})
         ).get_table_names()
     )
     redash_tables = set(db.metadata.tables)
