@@ -1,14 +1,10 @@
 import functools
 from urllib.parse import urlparse
-from pathlib import Path
 import json
 import os
 import boto3
 import sqlalchemy
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 ASSETDB_AWS_RDS_CA_BUNDLE = os.environ.get(
     "ASSETDB_AWS_RDS_CA_BUNDLE", "/app/rds-combined-ca-bundle.pem"
@@ -19,10 +15,6 @@ REDASH_DASHBOARD_JSON_PATH = os.environ.get(
 
 
 def get_iam_token(username, hostname, port):
-    logger.info(username)
-    logger.info(hostname)
-    logger.info(port)
-
     return boto3.client("rds").generate_db_auth_token(
         DBHostname=hostname,
         Port=port,
@@ -36,13 +28,7 @@ def get_iam_auth(username, hostname, port):
     dsn["user"] = username
     dsn["password"] = get_iam_token(username, hostname, port)
     dsn["sslmode"] = "verify-full"
-
-    pem_path = Path(ASSETDB_AWS_RDS_CA_BUNDLE)
-    if not pem_path.is_file():
-        raise FileNotFoundError(f"missing PEM file at {ASSETDB_AWS_RDS_CA_BUNDLE}")
-
     dsn["sslrootcert"] = ASSETDB_AWS_RDS_CA_BUNDLE
-    logger.info(f"DSN: {dsn}")
     return dsn
 
 

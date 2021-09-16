@@ -13,10 +13,6 @@ from redash.models.base import Column, key_type
 from redash.models.types import EncryptedConfiguration
 from redash.utils.configuration import ConfigurationContainer
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 manager = AppGroup(help="Manage the database (create/drop tables. reencrypt data.).")
 
 
@@ -35,8 +31,6 @@ def _wait_for_db_connection(db):
 def is_db_empty():
     from redash.models import db
     from redash.stacklet.auth import get_db
-
-    logger.info(settings.SQLALCHEMY_DATABASE_URI)
 
     engine = get_db(settings.SQLALCHEMY_DATABASE_URI)
     db._engine = engine
