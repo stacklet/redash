@@ -1,5 +1,6 @@
 import functools
 from urllib.parse import urlparse
+from pathlib import Path
 import json
 import os
 import boto3
@@ -31,6 +32,11 @@ def get_iam_auth(username, hostname, port):
     dsn["user"] = username
     dsn["password"] = get_iam_token(username, hostname, port)
     dsn["sslmode"] = "verify-full"
+
+    pem_path = Path(ASSETDB_AWS_RDS_CA_BUNDLE)
+    if not pem_path.is_file():
+        raise FileNotFoundError(f"missing PEM file at {ASSETDB_AWS_RDS_CA_BUNDLE}")
+
     dsn["sslrootcert"] = ASSETDB_AWS_RDS_CA_BUNDLE
     logger.info(f"DSN: {dsn}")
     return dsn
