@@ -19,6 +19,10 @@ REDASH_DASHBOARD_JSON_PATH = os.environ.get(
 
 
 def get_iam_token(username, hostname, port):
+    logger.info(username)
+    logger.info(hostname)
+    logger.info(port)
+
     return boto3.client("rds").generate_db_auth_token(
         DBHostname=hostname,
         Port=port,
