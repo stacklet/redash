@@ -19,15 +19,11 @@ REDASH_DASHBOARD_JSON_PATH = os.environ.get(
 
 def get_iam_token(username, hostname, port):
     return boto3.client("rds").generate_db_auth_token(
-        DBHostname=hostname, Port=port, DBUsername=username
+        DBHostname=hostname,
+        Port=port,
+        DBUsername=username,
+        Region=os.environ.get("AWS_REGION"),
     )
-    # TODO: ensure the Source that we setup with dashboard.py sets these values correctly when using IAM auth
-    # dsn["sslmode"] = "verify-full"
-    # dsn["sslrootcert"] = os.environ.get(
-    #     "ASSETDB_AWS_RDS_CA_BUNDLE",
-    #     str(Path(__file__).parent / "stacklet" / "rds-combined-ca-bundle.pem"),
-    # )
-    # return dsn
 
 
 def get_iam_auth(username, hostname, port):
@@ -36,6 +32,7 @@ def get_iam_auth(username, hostname, port):
     dsn["password"] = get_iam_token(username, hostname, port)
     dsn["sslmode"] = "verify-full"
     dsn["sslrootcert"] = ASSETDB_AWS_RDS_CA_BUNDLE
+    logger.info(f"DSN: {dsn}")
     return dsn
 
 
