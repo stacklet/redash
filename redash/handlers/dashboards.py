@@ -10,7 +10,7 @@ from redash.handlers.base import (
     get_object_or_404,
     paginate,
 )
-from redash.handlers.base import order_results as _order_results
+from redash.handlers.base import order_results as _order_results,
 from redash.permissions import (
     can_modify,
     require_admin_or_owner,
