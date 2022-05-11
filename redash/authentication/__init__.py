@@ -5,7 +5,7 @@ import time
 from datetime import timedelta
 from urllib.parse import urlsplit, urlunsplit
 
-from flask import jsonify, redirect, request, session, url_for
+from flask import redirect, request, session, url_for
 from flask_login import LoginManager, login_user, logout_user, user_logged_in
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Unauthorized
@@ -187,14 +187,11 @@ def jwt_token_load_user_from_request(request):
     if not payload:
         return
 
-    if "email" not in payload:
-        logger.info("No email field in token, refusing to login")
-        return
-
+    email = payload[org_settings["auth_jwt_auth_user_claim"]]
     try:
-        user = models.User.get_by_email_and_org(payload["email"], org)
+        user = models.User.get_by_email_and_org(email, org)
     except models.NoResultFound:
-        user = create_and_login_user(current_org, payload["email"], payload["email"])
+        user = create_and_login_user(current_org, email, email)
 
     return user
 
