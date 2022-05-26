@@ -182,7 +182,7 @@ def jwt_token_load_user_from_request(request):
         payload, token_is_valid = jwt_auth.verify_jwt_token(
             jwt_token,
             expected_issuer=org_settings["auth_jwt_auth_issuer"],
-            expected_audience=org_settings["auth_jwt_auth_audience"],
+            expected_audience=org_settings["auth_jwt_auth_audience"] or None,
             algorithms=org_settings["auth_jwt_auth_algorithms"],
             public_certs_url=org_settings["auth_jwt_auth_public_certs_url"],
         )
