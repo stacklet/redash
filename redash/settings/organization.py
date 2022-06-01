@@ -34,6 +34,7 @@ JWT_LOGIN_ENABLED = parse_boolean(os.environ.get("REDASH_JWT_LOGIN_ENABLED", "fa
 JWT_AUTH_ISSUER = os.environ.get("REDASH_JWT_AUTH_ISSUER", "")
 JWT_AUTH_PUBLIC_CERTS_URL = os.environ.get("REDASH_JWT_AUTH_PUBLIC_CERTS_URL", "")
 JWT_AUTH_AUDIENCE = os.environ.get("REDASH_JWT_AUTH_AUDIENCE", "")
+JWT_AUTH_CLIENT_ID = os.environ.get("REDASH_JWT_AUTH_CLIENT_ID", "")
 JWT_AUTH_ALGORITHMS = os.environ.get(
     "REDASH_JWT_AUTH_ALGORITHMS", "HS256,RS256,ES256"
 ).split(",")
@@ -71,6 +72,7 @@ settings = {
     "auth_jwt_auth_issuer": JWT_AUTH_ISSUER,
     "auth_jwt_auth_public_certs_url": JWT_AUTH_PUBLIC_CERTS_URL,
     "auth_jwt_auth_audience": JWT_AUTH_AUDIENCE,
+    "auth_jwt_auth_client_id": JWT_AUTH_CLIENT_ID,
     "auth_jwt_auth_algorithms": JWT_AUTH_ALGORITHMS,
     "auth_jwt_auth_cookie_name": JWT_AUTH_COOKIE_NAME,
     "auth_jwt_auth_header_name": JWT_AUTH_HEADER_NAME,
