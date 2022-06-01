@@ -55,7 +55,9 @@ def get_public_keys(url):
 get_public_keys.key_cache = {}
 
 
-def verify_jwt_token(jwt_token, expected_issuer, expected_audience, algorithms, public_certs_url):
+def verify_jwt_token(
+    jwt_token, expected_issuer, expected_audience, expected_client_id, algorithms, public_certs_url
+):
     # https://developers.cloudflare.com/access/setting-up-access/validate-jwt-tokens/
     # https://cloud.google.com/iap/docs/signed-headers-howto
     # Loop through the keys since we can't pass the key set to the decoder
@@ -74,6 +76,9 @@ def verify_jwt_token(jwt_token, expected_issuer, expected_audience, algorithms, 
             issuer = payload["iss"]
             if issuer != expected_issuer:
                 raise Exception("Wrong issuer: {}".format(issuer))
+            client_id = payload.get("client_id")
+            if expected_client_id and expected_client_id != client_id:
+                raise Exception("Wrong client_id: {}".format(client_id))
             valid_token = True
             break
         except Exception as e:
