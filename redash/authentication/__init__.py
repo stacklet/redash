@@ -182,7 +182,8 @@ def jwt_token_load_user_from_request(request):
         payload, token_is_valid = jwt_auth.verify_jwt_token(
             jwt_token,
             expected_issuer=org_settings["auth_jwt_auth_issuer"],
-            expected_audience=org_settings["auth_jwt_auth_audience"],
+            expected_audience=org_settings["auth_jwt_auth_audience"] or None,
+            expected_client_id=org_settings["auth_jwt_auth_client_id"] or None,
             algorithms=org_settings["auth_jwt_auth_algorithms"],
             public_certs_url=org_settings["auth_jwt_auth_public_certs_url"],
         )
@@ -192,10 +193,11 @@ def jwt_token_load_user_from_request(request):
     if not payload:
         return
 
+    email = payload[org_settings["auth_jwt_auth_user_claim"]]
     try:
-        user = models.User.get_by_email_and_org(payload["email"], org)
+        user = models.User.get_by_email_and_org(email, org)
     except models.NoResultFound:
-        user = create_and_login_user(current_org, payload["email"], payload["email"])
+        user = create_and_login_user(current_org, email, email)
 
     return user
 
