@@ -178,20 +178,20 @@ def jwt_token_load_user_from_request(request):
     else:
         return None
 
-    if jwt_token:
-        payload, token_is_valid = jwt_auth.verify_jwt_token(
-            jwt_token,
-            expected_issuer=org_settings["auth_jwt_auth_issuer"],
-            expected_audience=org_settings["auth_jwt_auth_audience"] or None,
-            expected_client_id=org_settings["auth_jwt_auth_client_id"] or None,
-            algorithms=org_settings["auth_jwt_auth_algorithms"],
-            public_certs_url=org_settings["auth_jwt_auth_public_certs_url"],
-        )
-        if not token_is_valid:
-            raise Unauthorized("Invalid JWT token")
+    if not jwt_token:
+        return None
 
-    if not payload:
-        return
+    payload, valid_token = jwt_auth.verify_jwt_token(
+        jwt_token,
+        expected_issuer=org_settings["auth_jwt_auth_issuer"],
+        expected_audience=org_settings["auth_jwt_auth_audience"] or None,
+        expected_client_id=org_settings["auth_jwt_auth_client_id"] or None,
+        algorithms=org_settings["auth_jwt_auth_algorithms"],
+        public_certs_url=org_settings["auth_jwt_auth_public_certs_url"],
+    )
+
+    if not valid_token:
+        return None
 
     email = payload[org_settings["auth_jwt_auth_user_claim"]]
     try:
@@ -225,7 +225,10 @@ def redirect_to_login():
         response.status_code = 404
         return response
 
-    login_url = get_login_url(next=request.url, external=False)
+    if org_settings["auth_jwt_login_enabled"] and org_settings["auth_jwt_auth_login_url"]:
+        login_url = org_settings["auth_jwt_auth_login_url"]
+    else:
+        login_url = get_login_url(next=request.url, external=False)
 
     return redirect(login_url)
 
