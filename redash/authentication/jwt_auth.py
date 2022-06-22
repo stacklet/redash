@@ -3,6 +3,13 @@ import logging
 
 import jwt
 import requests
+from jwt.exceptions import (
+    PyJWTError,
+    InvalidTokenError,
+    MissingRequiredClaimError,
+)
+
+from redash.settings.organization import settings as org_settings
 
 logger = logging.getLogger("jwt_auth")
 
@@ -69,19 +76,24 @@ def verify_jwt_token(
 
     valid_token = False
     payload = None
-    for key in keys:
+    for i, key in enumerate(keys):
         try:
             # decode returns the claims which has the email if you need it
             payload = jwt.decode(jwt_token, key=key, audience=expected_audience, algorithms=algorithms)
             issuer = payload["iss"]
             if issuer != expected_issuer:
-                raise Exception("Wrong issuer: {}".format(issuer))
+                raise InvalidTokenError("Wrong issuer: {}".format(issuer))
             client_id = payload.get("client_id")
             if expected_client_id and expected_client_id != client_id:
-                raise Exception("Wrong client_id: {}".format(client_id))
+                raise InvalidTokenError("Wrong client_id: {}".format(client_id))
+            user_claim = org_settings["auth_jwt_auth_user_claim"]
+            if not payload.get(user_claim):
+                raise MissingRequiredClaimError(user_claim)
             valid_token = True
             break
+        except PyJWTError as e:
+            logging.info("Rejecting JWT token for key %d: %s", i, e)
         except Exception as e:
-            logging.exception(e)
-
+            logging.exception("Error processing JWT token: %s", e)
+            break
     return payload, valid_token
