@@ -70,7 +70,12 @@ def verify_jwt_token(
     # Loop through the keys since we can't pass the key set to the decoder
     keys = get_public_keys(public_certs_url)
 
-    key_id = jwt.get_unverified_header(jwt_token).get("kid", "")
+    try:
+        key_id = jwt.get_unverified_header(jwt_token).get("kid", "")
+    except PyJWTError as e:
+        logger.info("Ignoring invalid JWT token: %s", e)
+        return None, False
+
     if key_id and isinstance(keys, dict):
         keys = [keys.get(key_id)]
 
@@ -92,8 +97,8 @@ def verify_jwt_token(
             valid_token = True
             break
         except PyJWTError as e:
-            logging.info("Rejecting JWT token for key %d: %s", i, e)
+            logger.info("Rejecting JWT token for key %d: %s", i, e)
         except Exception as e:
-            logging.exception("Error processing JWT token: %s", e)
+            logger.exception("Error processing JWT token: %s", e)
             break
     return payload, valid_token
