@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import logging
 import time
 from datetime import timedelta
@@ -198,6 +199,21 @@ def jwt_token_load_user_from_request(request):
         user = models.User.get_by_email_and_org(email, org)
     except models.NoResultFound:
         user = create_and_login_user(current_org, email, email)
+
+    if "stacklet:permissions" in payload:
+        try:
+            permissions = json.loads(payload["stacklet:permissions"])
+        except json.JSONDecodeError as e:
+            logger.exception("Error parsing stacklet:permissions: %s", e)
+        else:
+            user_groups = {group.name
+                           for group in models.Group.all(org)
+                           if group.id in user.group_ids}
+            if ["system", "write"] in permissions:
+                user_groups.add("admin")
+            else:
+                user_groups.discard("admin")
+            user.update_group_assignments(user_groups)
 
     return user
 
