@@ -55,8 +55,8 @@ def verify_jwt_token(
     try:
         key_id = jwt.get_unverified_header(jwt_token).get("kid", "")
     except PyJWTError as e:
-        logger.info("Ignoring invalid JWT token: %s", e)
-        return None, False
+        logger.info("Rejecting invalid JWT token: %s", e)
+        raise
 
     if key_id and isinstance(keys, dict):
         keys = [keys.get(key_id)]
@@ -71,18 +71,21 @@ def verify_jwt_token(
             )
             issuer = payload["iss"]
             if issuer != expected_issuer:
-                raise InvalidTokenError("Wrong issuer: {}".format(issuer))
+                raise InvalidTokenError('Token has incorrect "issuer"')
             client_id = payload.get("client_id")
             if expected_client_id and expected_client_id != client_id:
-                raise InvalidTokenError("Wrong client_id: {}".format(client_id))
+                raise InvalidTokenError('Token has incorrect "client_id"')
             user_claim = org_settings["auth_jwt_auth_user_claim"]
             if not payload.get(user_claim):
                 raise MissingRequiredClaimError(user_claim)
             valid_token = True
             break
+        except InvalidTokenError as e:
+            logger.info("Rejecting invalid JWT token: %s", e)
+            raise
         except PyJWTError as e:
             logger.info("Rejecting JWT token for key %d: %s", i, e)
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
-            break
+            raise InvalidTokenError("Error processing token") from e
     return payload, valid_token
