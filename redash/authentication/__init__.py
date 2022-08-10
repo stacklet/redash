@@ -192,7 +192,7 @@ def jwt_token_load_user_from_request(request):
     if not valid_token:
         return None
 
-    email = payload[org_settings["auth_jwt_auth_user_claim"]]
+    email = payload["identity"]
     try:
         user = models.User.get_by_email_and_org(email, org)
     except models.NoResultFound:
