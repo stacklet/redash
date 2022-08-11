@@ -103,8 +103,6 @@ def verify_jwt_token(
                 raise InvalidTokenError(
                     "Unable to determine identity (missing email, username, or other identifier)"
                 )
-            # Ensure identity is in a consistent place, regardless of where we found it.
-            payload["identity"] = identity
             valid_token = True
             break
         except (InvalidKeyError, InvalidSignatureError) as e:
