@@ -97,8 +97,6 @@ def verify_jwt_token(
                 raise InvalidTokenError(
                     "Unable to determine identity (missing email, username, or other identifier)"
                 )
-            # Ensure identity is in a consistent place, regardless of where we found it.
-            payload["identity"] = identity
             valid_token = True
             break
         except InvalidTokenError as e:
@@ -109,4 +107,4 @@ def verify_jwt_token(
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
             raise InvalidTokenError("Error processing token") from e
-    return payload, valid_token
+    return payload, identity, valid_token
