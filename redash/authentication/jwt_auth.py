@@ -5,7 +5,6 @@ import simplejson
 from jwt.exceptions import (
     PyJWTError,
     InvalidTokenError,
-    MissingRequiredClaimError,
     ExpiredSignatureError,
 )
 
@@ -44,6 +43,24 @@ def get_public_keys(url):
 get_public_keys.key_cache = {}
 
 
+def find_identity_in_payload(payload):
+    if "email" in payload:
+        return payload["email"]
+    if "identities" in payload:
+        for identity in payload["identities"]:
+            if "email" in identity:
+                return identity["email"]
+            elif "userId" in identity:
+                return identity["userId"]
+            elif "nameId" in identity:
+                return identity["nameId"]
+    elif "username" in payload:
+        return payload["username"]
+    elif "cognito:username" in payload:
+        return payload["cognito:username"]
+    return None
+
+
 def verify_jwt_token(
     jwt_token, expected_issuer, expected_audience, expected_client_id, algorithms, public_certs_url
 ):
@@ -75,9 +92,11 @@ def verify_jwt_token(
             client_id = payload.get("client_id")
             if expected_client_id and expected_client_id != client_id:
                 raise InvalidTokenError('Token has incorrect "client_id"')
-            user_claim = org_settings["auth_jwt_auth_user_claim"]
-            if not payload.get(user_claim):
-                raise MissingRequiredClaimError(user_claim)
+            identity = find_identity_in_payload(payload)
+            if not identity:
+                raise InvalidTokenError(
+                    "Unable to determine identity (missing email, username, or other identifier)"
+                )
             valid_token = True
             break
         except InvalidTokenError as e:
@@ -88,4 +107,4 @@ def verify_jwt_token(
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
             raise InvalidTokenError("Error processing token") from e
-    return payload, valid_token
+    return payload, identity, valid_token
