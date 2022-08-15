@@ -124,6 +124,9 @@ def verify_jwt_token(
             # Any other issue with the token means it has a fundamental issue so
             # if we send them to the login page it could cause a redirect loop.
             raise
+        except PyJWTError as e:
+            logger.error("Rejecting JWT token for key %d: %s", i, e)
+            continue
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
             raise InvalidTokenError("Error processing token") from e
