@@ -99,11 +99,15 @@ def verify_jwt_token(
                 )
             valid_token = True
             break
+        except ExpiredSignatureError as e:
+            logger.info("Rejecting expired JWT token: %s", e)
+            continue
         except InvalidTokenError as e:
             logger.info("Rejecting invalid JWT token: %s", e)
             raise
         except PyJWTError as e:
             logger.info("Rejecting JWT token for key %d: %s", i, e)
+            continue
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
             raise InvalidTokenError("Error processing token") from e
