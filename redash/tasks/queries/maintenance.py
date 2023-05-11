@@ -11,6 +11,7 @@ from redash.tasks.failure_report import track_failure
 from redash.utils import json_dumps, sentry
 from redash.worker import job, get_job_logger
 from redash.monitor import rq_job_ids
+from redash.query_runner import NotSupported
 
 from .execution import enqueue_query
 
@@ -165,7 +166,7 @@ def remove_ghost_locks():
 @job("schemas")
 def refresh_schema(data_source_id):
     ds = models.DataSource.get_by_id(data_source_id)
-    logger.info(u"task=refresh_schema state=start ds_id=%s", ds.id)
+    logger.info(u"task=refresh_schema state=start ds_id=%s ds_name=%s", ds.id, ds.name)
     start_time = time.time()
     try:
         ds.get_schema(refresh=True)
@@ -175,6 +176,11 @@ def refresh_schema(data_source_id):
             time.time() - start_time,
         )
         statsd_client.incr("refresh_schema.success")
+    except NotSupported:
+        logger.info(
+            u"task=refresh_schema state=skip ds_id=%s reason=not_supported",
+            ds.id
+        )
     except JobTimeoutException:
         logger.info(
             u"task=refresh_schema state=timeout ds_id=%s runtime=%.2f",
