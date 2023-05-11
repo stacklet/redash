@@ -18,6 +18,7 @@ from redash.tasks import (
     rq_scheduler,
     schedule_periodic_jobs,
     periodic_job_definitions,
+    check_periodic_jobs,
 )
 from redash.worker import default_queues
 
@@ -75,12 +76,15 @@ class WorkerHealthcheck(base.BaseCheck):
         total_jobs_in_watched_queues = sum([len(q.jobs) for q in worker.queues])
         has_nothing_to_do = total_jobs_in_watched_queues == 0
 
-        is_healthy = is_busy or seen_lately or has_nothing_to_do
+        pjobs_ok, num_pjobs, num_missing_pjobs = check_periodic_jobs()
+
+        is_healthy = (is_busy or seen_lately or has_nothing_to_do) and pjobs_ok
 
         self._log(
             "Worker %s healthcheck: Is busy? %s. "
             "Seen lately? %s (%d seconds ago). "
             "Has nothing to do? %s (%d jobs in watched queues). "
+            "Periodic jobs ok? %s (%s missing of %s). "
             "==> Is healthy? %s",
             worker.key,
             is_busy,
@@ -88,6 +92,9 @@ class WorkerHealthcheck(base.BaseCheck):
             time_since_seen.seconds,
             has_nothing_to_do,
             total_jobs_in_watched_queues,
+            pjobs_ok,
+            num_missing_pjobs,
+            num_pjobs,
             is_healthy,
         )
 
