@@ -21,6 +21,7 @@ from redash.tasks.schedule import (
     periodic_job_definitions,
     rq_scheduler,
     schedule_periodic_jobs,
+    check_periodic_jobs
 )
 from redash.tasks.worker import Job, Queue, Worker
 
