@@ -32,6 +32,34 @@ def scheduler():
     rq_scheduler.run()
 
 
+class SchedulerHealthcheck(base.BaseCheck):
+    NAME = "RQ Scheduler Healthcheck"
+
+    def __call__(self, process_spec):
+        pjobs_ok, num_pjobs, num_missing_pjobs = check_periodic_jobs()
+
+        is_healthy = pjobs_ok
+
+        self._log(
+            "Scheduler healthcheck: "
+            "Periodic jobs ok? %s (%s/%s jobs scheduled). "
+            "==> Is healthy? %s",
+            pjobs_ok,
+            num_pjobs - num_missing_pjobs,
+            num_pjobs,
+            is_healthy,
+        )
+
+        return is_healthy
+
+
+@manager.command()
+def scheduler_healthcheck():
+    return check_runner.CheckRunner(
+        "scheduler_healthcheck", "scheduler", None, [(SchedulerHealthcheck, {})]
+    ).run()
+
+
 @manager.command()
 @argument("queues", nargs=-1)
 def worker(queues):
@@ -76,15 +104,12 @@ class WorkerHealthcheck(base.BaseCheck):
         total_jobs_in_watched_queues = sum([len(q.jobs) for q in worker.queues])
         has_nothing_to_do = total_jobs_in_watched_queues == 0
 
-        pjobs_ok, num_pjobs, num_missing_pjobs = check_periodic_jobs()
-
-        is_healthy = (is_busy or seen_lately or has_nothing_to_do) and pjobs_ok
+        is_healthy = is_busy or seen_lately or has_nothing_to_do
 
         self._log(
             "Worker %s healthcheck: Is busy? %s. "
             "Seen lately? %s (%d seconds ago). "
             "Has nothing to do? %s (%d jobs in watched queues). "
-            "Periodic jobs ok? %s (%s missing of %s). "
             "==> Is healthy? %s",
             worker.key,
             is_busy,
@@ -92,9 +117,6 @@ class WorkerHealthcheck(base.BaseCheck):
             time_since_seen.seconds,
             has_nothing_to_do,
             total_jobs_in_watched_queues,
-            pjobs_ok,
-            num_missing_pjobs,
-            num_pjobs,
             is_healthy,
         )
 
@@ -102,7 +124,7 @@ class WorkerHealthcheck(base.BaseCheck):
 
 
 @manager.command()
-def healthcheck():
+def worker_healthcheck():
     return check_runner.CheckRunner(
         "worker_healthcheck", "worker", None, [(WorkerHealthcheck, {})]
     ).run()
