@@ -252,7 +252,7 @@ class QueryExecutor(object):
     def _log_progress(self, state):
         logger.info(
             "job=execute_query state=%s query_hash=%s type=%s ds_id=%d "
-            "job_id=%s queue=%s query_id=%s username=%s",
+            "job_id=%s queue=%s query_id=%s username=%s db_role=%s",
             state,
             self.query_hash,
             self.data_source.type,
@@ -261,6 +261,7 @@ class QueryExecutor(object):
             self.metadata.get("Queue", "unknown"),
             self.metadata.get("query_id", "unknown"),
             self.metadata.get("Username", "unknown"),
+            self.user.db_role,
         )
 
     def _load_data_source(self):
