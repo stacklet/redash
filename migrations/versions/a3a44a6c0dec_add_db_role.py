@@ -1,4 +1,4 @@
-"""Add user db_role column.
+"""Add db_role column to Users and QueryResults.
 
 Revision ID: a3a44a6c0dec
 Revises: 89bc7873a3e0
@@ -25,7 +25,16 @@ def upgrade():
             nullable=True,
         ),
     )
+    op.add_column(
+        "query_results",
+        sa.Column(
+            "db_role",
+            sa.String(128),
+            nullable=True,
+        ),
+    )
 
 
 def downgrade():
     op.drop_column("users", "db_role")
+    op.drop_column("query_results", "db_role")

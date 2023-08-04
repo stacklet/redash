@@ -331,6 +331,7 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
     _data = Column("data", db.Text)
     runtime = Column(postgresql.DOUBLE_PRECISION)
     retrieved_at = Column(db.DateTime(True))
+    db_role = Column(db.String(128), nullable=True)
 
     __tablename__ = "query_results"
 
@@ -346,6 +347,7 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
             "data_source_id": self.data_source_id,
             "runtime": self.runtime,
             "retrieved_at": self.retrieved_at,
+            "db_role": self.db_role,
         }
 
     @classmethod
@@ -380,7 +382,7 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
 
     @classmethod
     def store_result(
-        cls, org, data_source, query_hash, query, data, run_time, retrieved_at
+        cls, org, data_source, query_hash, query, data, run_time, retrieved_at, db_role
     ):
         query_result = cls(
             org_id=org,
@@ -389,6 +391,7 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
             runtime=run_time,
             data_source=data_source,
             retrieved_at=retrieved_at,
+            db_role=db_role,
             data=data,
         )
 

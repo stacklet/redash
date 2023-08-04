@@ -228,6 +228,7 @@ class QueryExecutor(object):
                 data,
                 run_time,
                 utcnow(),
+                self.user.db_role,
             )
 
             updated_query_ids = models.Query.update_latest_result(query_result)
