@@ -5,7 +5,7 @@ import time
 from functools import reduce
 from operator import or_
 
-from flask import current_app as app, url_for, request_started
+from flask import current_app as app, url_for, request_started, request_finished
 from flask_login import current_user, AnonymousUserMixin, UserMixin
 from passlib.apps import custom_app_context as pwd_context
 from sqlalchemy.exc import DBAPIError
@@ -54,12 +54,34 @@ def update_user_active_at(sender, *args, **kwargs):
         redis_connection.hset(LAST_ACTIVE_KEY, current_user.id, int(time.time()))
 
 
+def set_db_role(sender, *args, **kwargs):
+    """
+    Check to see if the current user has a db_role assigned, and,
+    if so, set it for the session.
+    """
+    logger.info(f"Checking for DB role on user: {current_user}")
+    db_role = getattr(current_user, "db_role", None)
+    if db_role:
+        logger.info(f"Setting session DB role: {db_role}")
+        db.session.execute("SET ROLE :db_role", {"db_role": db_role})
+
+
+def reset_db_role(sender, *args, **kwargs):
+    """
+    Reset any DB role set for the current user.
+    """
+    logger.info("Resetting session DB role")
+    db.session.execute("RESET ROLE")
+
+
 def init_app(app):
     """
     A Flask extension to keep user details updates in Redis and
     sync it periodically to the database (User.details).
     """
     request_started.connect(update_user_active_at, app)
+    request_started.connect(set_db_role, app)
+    request_finished.connect(reset_db_role, app)
 
 
 class PermissionsCheckMixin(object):
@@ -397,8 +419,6 @@ class AccessPermission(GFKBase, db.Model):
 
 
 class AnonymousUser(AnonymousUserMixin, PermissionsCheckMixin):
-    db_role = None
-
     @property
     def permissions(self):
         return []
@@ -419,7 +439,6 @@ class ApiUser(UserMixin, PermissionsCheckMixin):
             self.object = api_key.object
         self.group_ids = groups
         self.org = org
-        self.db_role = None
 
     def __repr__(self):
         return "<{}>".format(self.name)
