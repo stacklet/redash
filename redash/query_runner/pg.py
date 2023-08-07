@@ -260,6 +260,8 @@ class PostgreSQL(BaseSQLQueryRunner):
         cursor = connection.cursor()
 
         try:
+            if self.user.db_role:
+                cursor.execute("set role :db_role;", db_role=user.db_role)
             cursor.execute(query)
             _wait(connection)
 

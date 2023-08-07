@@ -1,6 +1,8 @@
 import functools
 
-from flask_sqlalchemy import BaseQuery, SQLAlchemy
+from flask_login import current_user
+from flask_sqlalchemy import BaseQuery, SignallingSession, SQLAlchemy
+from sqlalchemy import event
 from sqlalchemy import MetaData
 from sqlalchemy.orm import object_session
 from sqlalchemy.pool import NullPool
@@ -11,6 +13,18 @@ from redash import settings
 from redash.utils import json_dumps, get_schema
 from redash.stacklet.auth import get_env_db
 
+
+class RowLevelAuthSession(SignallingSession):
+    def __init__(self, *args, **kwargs):
+        super(RowLevelAuthSession, self).__init__(*args, **kwargs)
+        event.listen(self, 'after_begin', self.set_local_role)
+
+    def set_local_role(self, session, txn, connection):
+        if current_user.db_role:
+            connection.execute(
+                "SET LOCAL ROLE :role_name;",
+                role_name=current_user.db_role
+            )
 
 class RedashSQLAlchemy(SQLAlchemy):
     def apply_driver_hacks(self, app, info, options):
@@ -33,6 +47,9 @@ class RedashSQLAlchemy(SQLAlchemy):
             options["poolclass"] = NullPool
             # Remove options NullPool does not support:
             options.pop("max_overflow", None)
+
+    def create_session(self, options):
+        return RowLevelAuthSession(self, **options)
 
 
 md = None
