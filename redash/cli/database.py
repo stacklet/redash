@@ -2,7 +2,7 @@ import time
 
 from click import argument, option
 from flask.cli import AppGroup
-from flask_migrate import stamp
+from flask_migrate import stamp, upgrade
 import sqlalchemy
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import select
@@ -35,9 +35,12 @@ def is_db_empty():
     engine = get_env_db()
     db._engine = engine
 
+    schema = db.metadata.schema
     extant_tables = set(sqlalchemy.inspect(engine).get_table_names())
-    redash_tables = set(db.metadata.tables)
-    return len(redash_tables.intersection(extant_tables)) == 0
+    redash_tables = set(table.lstrip(f"{schema}.") for table in db.metadata.tables)
+    num_missing = len(redash_tables - redash_tables.intersection(extant_tables))
+    print(f"Checking schema {schema} for tables {redash_tables}: found {extant_tables} (missing {num_missing})")
+    return num_missing == len(redash_tables)
 
 
 def load_extensions(db):
@@ -77,7 +80,8 @@ def create_tables():
         # Need to mark current DB as up to date
         stamp()
     else:
-        print("existing redash tables detected, exiting")
+        print("existing redash tables detected, upgrading instead")
+        upgrade()
 
 
 @manager.command()
