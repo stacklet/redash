@@ -77,6 +77,16 @@ def create_tables():
         sqlalchemy.orm.configure_mappers()
         db.create_all()
 
+        db.session.execute(
+            """
+            CREATE POLICY limited_query_results ON query_results
+              AS RESTRICTIVE
+              FOR SELECT
+              TO limited_visibility
+              WITH CHECK current_user = db_role;
+            """
+        )
+
         # Need to mark current DB as up to date
         stamp()
     else:

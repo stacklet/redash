@@ -33,6 +33,15 @@ def upgrade():
             nullable=True,
         ),
     )
+    op.execute(
+        """
+        CREATE POLICY limited_query_results ON query_results
+          AS RESTRICTIVE
+          FOR SELECT
+          TO limited_visibility
+          WITH CHECK current_user = db_role;
+        """
+    )
 
 
 def downgrade():
