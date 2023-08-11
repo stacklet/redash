@@ -5,6 +5,7 @@ import time
 import numbers
 import pytz
 
+from flask_login import current_user
 from sqlalchemy import distinct, or_, and_, UniqueConstraint, cast
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
@@ -42,7 +43,7 @@ from redash.utils import (
 from redash.utils.configuration import ConfigurationContainer
 from redash.models.parameterized_query import ParameterizedQuery
 
-from .base import db, gfk_type, Column, GFKBase, SearchBaseQuery, key_type, primary_key
+from .base import db, gfk_type, Column, GFKBase, BaseQuery, SearchBaseQuery, key_type, primary_key
 from .changes import ChangeTrackingMixin, Change  # noqa
 from .mixins import BelongsToOrgMixin, TimestampMixin
 from .organizations import Organization
@@ -407,6 +408,22 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
     @property
     def groups(self):
         return self.data_source.groups
+
+
+@listens_for(BaseQuery, "before_compile", retval=True)
+def prefilter_query_results(query):
+    for desc in query.column_descriptions:
+        if desc['type'] is QueryResult:
+            db_role = getattr(current_user, "db_role", None)
+            if not db_role:
+                continue
+            limit = query._limit
+            offset = query._offset
+            query = query.limit(None).offset(None)
+            query.offset(None)
+            query = query.filter(desc['entity'].db_role == db_role)
+            query = query.limit(limit).offset(offset)
+    return query
 
 
 def should_schedule_next(
