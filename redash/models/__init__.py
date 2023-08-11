@@ -345,8 +345,11 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         )
 
     @classmethod
-    def get_latest(cls, data_source, query, max_age=0):
-        query_hash = gen_query_hash(query)
+    def get_latest(cls, data_source, query, max_age=0, is_hash=False):
+        if is_hash:
+            query_hash = query
+        else:
+            query_hash = gen_query_hash(query)
 
         if max_age == -1 and settings.QUERY_RESULTS_EXPIRED_TTL_ENABLED:
             max_age = settings.QUERY_RESULTS_EXPIRED_TTL
@@ -364,6 +367,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
             )
 
         return query.order_by(cls.retrieved_at.desc()).first()
+
 
     @classmethod
     def store_result(
