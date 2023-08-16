@@ -412,6 +412,19 @@ class QueryResult(db.Model, QueryResultPersistence, BelongsToOrgMixin):
 
 @listens_for(BaseQuery, "before_compile", retval=True)
 def prefilter_query_results(query):
+    """
+    Ensure that a user with a db_role defined can only see QueryResults that
+    they themselves created.
+
+    This is to ensure that they don't see results that might include resources
+    from accounts that shouldn't be visibile to them. Ideally, this would use
+    `set role` and the RLS policy that is applied to the table, but without a
+    "post-query" type event, that's not really feasible.
+
+    The RLS policy on the redash.query_results table still applies to the
+    arbitrary query that the user executes, so that they can't issue a query
+    directly against that table and get around this check.
+    """
     for desc in query.column_descriptions:
         if desc['type'] is QueryResult:
             db_role = getattr(current_user, "db_role", None)
