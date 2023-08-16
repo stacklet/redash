@@ -7,6 +7,8 @@ import time
 import pytz
 from sqlalchemy import UniqueConstraint, and_, cast, distinct, func, or_
 from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB
+from flask_login import current_user
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
@@ -77,6 +79,21 @@ from redash.utils import (
     mustache_render,
     mustache_render_escape,
     sentry,
+    gen_query_hash)
+from redash.utils.configuration import ConfigurationContainer
+from redash.models.parameterized_query import ParameterizedQuery
+
+from .base import db, gfk_type, Column, GFKBase, BaseQuery, SearchBaseQuery, key_type, primary_key
+from .changes import ChangeTrackingMixin, Change  # noqa
+from .mixins import BelongsToOrgMixin, TimestampMixin
+from .organizations import Organization
+from .types import (
+    EncryptedConfiguration,
+    Configuration,
+    MutableDict,
+    MutableList,
+    PseudoJSON,
+    pseudo_json_cast_property
 )
 from redash.utils.configuration import ConfigurationContainer
 
@@ -392,6 +409,35 @@ class QueryResult(db.Model, BelongsToOrgMixin):
     @property
     def groups(self):
         return self.data_source.groups
+
+
+@listens_for(BaseQuery, "before_compile", retval=True)
+def prefilter_query_results(query):
+    """
+    Ensure that a user with a db_role defined can only see QueryResults that
+    they themselves created.
+
+    This is to ensure that they don't see results that might include resources
+    from accounts that shouldn't be visibile to them. Ideally, this would use
+    `set role` and the RLS policy that is applied to the table, but without a
+    "post-query" type event, that's not really feasible.
+
+    The RLS policy on the redash.query_results table still applies to the
+    arbitrary query that the user executes, so that they can't issue a query
+    directly against that table and get around this check.
+    """
+    for desc in query.column_descriptions:
+        if desc['type'] is QueryResult:
+            db_role = getattr(current_user, "db_role", None)
+            if not db_role:
+                continue
+            limit = query._limit
+            offset = query._offset
+            query = query.limit(None).offset(None)
+            query.offset(None)
+            query = query.filter(desc['entity'].db_role == db_role)
+            query = query.limit(limit).offset(offset)
+    return query
 
 
 def should_schedule_next(previous_iteration, now, interval, time=None, day_of_week=None, failures=0):
