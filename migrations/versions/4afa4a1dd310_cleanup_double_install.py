@@ -38,13 +38,8 @@ def get_groups(org, group_name):
 
 
 def upgrade():
-    user = models.User.find_by_email("deleteme@riotgames.com")
-    if not user:
-        return
-
-    org_slug = "default"
-    org = models.Organization.query.filter(models.Organization.slug == org_slug).first()
-    assert org
+    user = models.User.find_by_email("deleteme@riotgames.com").one()
+    org = models.Organization.query.filter(models.Organization.slug == "default").one()
 
     dupe_admin_group = get_groups(org, "admin")[0]
     dupe_default_group = get_groups(org, "default")[0]
