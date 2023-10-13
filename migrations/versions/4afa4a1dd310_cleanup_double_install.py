@@ -38,7 +38,11 @@ def get_groups(org, group_name):
 
 
 def upgrade():
-    user = models.User.find_by_email("deleteme@riotgames.com").one()
+    # if this user doesn't exist, then we're not in RIOT and should no-op
+    user = models.User.find_by_email("deleteme@riotgames.com").first()
+    if not user:
+        return
+
     org = models.Organization.query.filter(models.Organization.slug == "default").one()
 
     dupe_admin_group = get_groups(org, "admin")[0]
