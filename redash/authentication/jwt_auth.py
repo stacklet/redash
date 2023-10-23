@@ -4,6 +4,9 @@ import requests
 import simplejson
 from jwt.exceptions import (
     PyJWTError,
+    ImmatureSignatureError,
+    InvalidKeyError,
+    InvalidSignatureError,
     InvalidTokenError,
     ExpiredSignatureError,
 )
@@ -80,12 +83,14 @@ def verify_jwt_token(
 
     valid_token = False
     payload = None
+    any_key_valid = False
     for i, key in enumerate(keys):
         try:
             # decode returns the claims which has the email if you need it
             payload = jwt.decode(
                 jwt_token, key=key, audience=expected_audience, algorithms=algorithms
             )
+            any_key_valid = True
             issuer = payload["iss"]
             if issuer != expected_issuer:
                 raise InvalidTokenError('Token has incorrect "issuer"')
@@ -99,16 +104,32 @@ def verify_jwt_token(
                 )
             valid_token = True
             break
-        except ExpiredSignatureError as e:
-            logger.info("Rejecting expired JWT token: %s", e)
+        except (InvalidKeyError, InvalidSignatureError) as e:
+            logger.info("Rejecting JWT token for key %d: %s", i, e)
+            # Key servers can host multiple keys, only one of which would
+            # actually be used for a given token. So if the check failed
+            # due only to an issue with this key, we should just move on
+            # to the next one.
+            continue
+        except (ImmatureSignatureError, ExpiredSignatureError) as e:
+            logger.info("Rejecting JWT token: %s", e)
+            # The key checked out, but the token was outside of the time-window
+            # that it should be valid for. This is not an error but means they'll
+            # need to log in again.
+            any_key_valid = True
             continue
         except InvalidTokenError as e:
-            logger.info("Rejecting invalid JWT token: %s", e)
+            logger.error("Rejecting invalid JWT token: %s", e)
+            # Any other issue with the token means it has a fundamental issue so
+            # if we send them to the login page it could cause a redirect loop.
             raise
-        except PyJWTError as e:
-            logger.info("Rejecting JWT token for key %d: %s", i, e)
-            continue
         except Exception as e:
             logger.exception("Error processing JWT token: %s", e)
             raise InvalidTokenError("Error processing token") from e
+    if not any_key_valid:
+        logger.error("No valid keys for token")
+        # If none of the keys from the key server are valid, it's a auth server
+        # misconfiguration and sending them to the login page would definitely
+        # cause a redirect loop.
+        raise InvalidTokenError("No valid keys for token")
     return payload, identity, valid_token
