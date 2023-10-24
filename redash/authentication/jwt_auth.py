@@ -81,8 +81,9 @@ def verify_jwt_token(
     if key_id and isinstance(keys, dict):
         keys = [keys.get(key_id)]
 
-    valid_token = False
     payload = None
+    identity = None
+    valid_token = False
     any_key_valid = False
     for i, key in enumerate(keys):
         try:
