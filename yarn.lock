@@ -1684,7 +1684,7 @@
     d3 "^3.5.17"
     d3-cloud "^1.2.4"
     debug "^3.1.0"
-    dompurify "^2.0.7"
+    dompurify "^2.4.7"
     font-awesome "^4.7.0"
     hoist-non-react-statics "^3.3.0"
     leaflet "^1.2.0"
@@ -2774,10 +2774,10 @@ axe-core@^4.0.2:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.1.2.tgz#7cf783331320098bfbef620df3b3c770147bc224"
   integrity sha512-V+Nq70NxKhYt89ArVcaNL9FDryB3vQOd+BFXZIfO3RP6rwtj+2yqqqdHEkacutglPaZLkJeuXKCjCJDMGPtPqg==
 
-axios-auth-refresh@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/axios-auth-refresh/-/axios-auth-refresh-3.0.0.tgz#dd8c8a8458250c554c9b00c6b2cf571397c8eec6"
-  integrity sha512-0XJnJY711f7opdT+b/au/xw1g4MYrjntXB8Oy5l48plbzOWLjUtJ+m8CtiNLgN3MAvGFJ/Q1NtQ7WKf2euKu6g==
+axios-auth-refresh@^3.3.6:
+  version "3.3.6"
+  resolved "https://registry.yarnpkg.com/axios-auth-refresh/-/axios-auth-refresh-3.3.6.tgz#a879f6296a889d6616e51069c2a8135b697966e7"
+  integrity sha512-2CeBUce/SxIfFxow5/n8vApJ97yYF6qoV4gh1UrswT7aEOnlOdBLxxyhOI4IaxGs6BY0l8YujU2jlc4aCmK17Q==
 
 axios@^0.19.0, axios@^0.19.2:
   version "0.19.2"
@@ -5315,10 +5315,10 @@ domhandler@^2.3.0:
   dependencies:
     domelementtype "1"
 
-dompurify@^2.0.7:
-  version "2.0.7"
-  resolved "https://registry.yarnpkg.com/dompurify/-/dompurify-2.0.7.tgz#f8266ad38fe1602fb5b3222f31eedbf5c16c4fd5"
-  integrity sha512-S3O0lk6rFJtO01ZTzMollCOGg+WAtCwS3U5E2WSDY/x/sy7q70RjEC4Dmrih5/UqzLLB9XoKJ8KqwBxaNvBu4A==
+dompurify@2.4.7, dompurify@^2.4.7:
+  version "2.4.7"
+  resolved "https://registry.yarnpkg.com/dompurify/-/dompurify-2.4.7.tgz#277adeb40a2c84be2d42a8bcd45f582bfa4d0cfc"
+  integrity sha512-kxxKlPEDa6Nc5WJi+qRgPbOAbgTpSULL+vI3NUXsZMlkJxTqYI9wg5ZTay2sFrdZRWHPWNi+EdAhcJf81WtoMQ==
 
 domutils@1.5.1, domutils@^1.5.1:
   version "1.5.1"
