@@ -1,9 +1,13 @@
 import logging
-import sys
-import uuid
 
-from redash.query_runner import *
-from redash.utils import json_dumps, json_loads
+from redash.query_runner import (
+    TYPE_DATETIME,
+    TYPE_FLOAT,
+    TYPE_STRING,
+    BaseSQLQueryRunner,
+    JobTimeoutException,
+    register,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +84,7 @@ class SqlServer(BaseSQLQueryRunner):
         results, error = self.run_query(query, None)
 
         if error is not None:
-            raise Exception("Failed getting schema.")
-
-        results = json_loads(results)
+            self._handle_run_query_error(error)
 
         for row in results["rows"]:
             if row["table_schema"] != self.configuration["db"]:
@@ -131,22 +133,17 @@ class SqlServer(BaseSQLQueryRunner):
             data = cursor.fetchall()
 
             if cursor.description is not None:
-                columns = self.fetch_columns(
-                    [(i[0], types_map.get(i[1], None)) for i in cursor.description]
-                )
-                rows = [
-                    dict(zip((column["name"] for column in columns), row))
-                    for row in data
-                ]
+                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
+                rows = [dict(zip((column["name"] for column in columns), row)) for row in data]
 
                 data = {"columns": columns, "rows": rows}
-                json_data = json_dumps(data)
                 error = None
             else:
                 error = "No data was returned."
-                json_data = None
+                data = None
 
             cursor.close()
+            connection.commit()
         except pymssql.Error as e:
             try:
                 # Query errors are at `args[1]`
@@ -154,7 +151,7 @@ class SqlServer(BaseSQLQueryRunner):
             except IndexError:
                 # Connection errors are `args[0][1]`
                 error = e.args[0][1]
-            json_data = None
+            data = None
         except (KeyboardInterrupt, JobTimeoutException):
             connection.cancel()
             raise
@@ -162,7 +159,7 @@ class SqlServer(BaseSQLQueryRunner):
             if connection:
                 connection.close()
 
-        return json_data, error
+        return data, error
 
 
 register(SqlServer)
