@@ -38,6 +38,8 @@ from redash.models.base import (
     gfk_type,
     key_type,
     primary_key,
+    BaseQuery,
+    SearchBaseQuery,
 )
 from redash.models.changes import Change, ChangeTrackingMixin  # noqa
 from redash.models.mixins import BelongsToOrgMixin, TimestampMixin
@@ -83,19 +85,6 @@ from redash.utils import (
 from redash.utils.configuration import ConfigurationContainer
 from redash.models.parameterized_query import ParameterizedQuery
 
-from .base import db, gfk_type, Column, GFKBase, BaseQuery, SearchBaseQuery, key_type, primary_key
-from .changes import ChangeTrackingMixin, Change  # noqa
-from .mixins import BelongsToOrgMixin, TimestampMixin
-from .organizations import Organization
-from .types import (
-    EncryptedConfiguration,
-    Configuration,
-    MutableDict,
-    MutableList,
-    PseudoJSON,
-    pseudo_json_cast_property
-)
-from redash.utils.configuration import ConfigurationContainer
 
 logger = logging.getLogger(__name__)
 
