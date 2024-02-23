@@ -99,6 +99,10 @@ class User(TimestampMixin, db.Model, BelongsToOrgMixin, UserMixin, PermissionsCh
     )
     active_at = json_cast_property(db.DateTime(True), "details", "active_at", default=None)
     _profile_image_url = json_cast_property(db.Text(), "details", "profile_image_url", default=None)
+        default={},
+    )
+    active_at = json_cast_property(db.DateTime(True), "details", "active_at", default=None)
+    _profile_image_url = json_cast_property(db.Text(), "details", "profile_image_url", default=None)
     is_invitation_pending = json_cast_property(db.Boolean(True), "details", "is_invitation_pending", default=False)
     is_email_verified = json_cast_property(db.Boolean(True), "details", "is_email_verified", default=True)
 
@@ -314,10 +318,6 @@ class AccessPermission(GFKBase, db.Model):
 
     __tablename__ = "access_permissions"
 
-    @classmethod
-    def grant(cls, obj, access_type, grantee, grantor):
-        grant = cls.query.filter(
-            cls.object_type == obj.__tablename__,
             cls.object_id == obj.id,
             cls.access_type == access_type,
             cls.grantee == grantee,

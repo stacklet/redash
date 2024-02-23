@@ -85,7 +85,6 @@ from redash.utils import (
 from redash.utils.configuration import ConfigurationContainer
 from redash.models.parameterized_query import ParameterizedQuery
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -356,6 +355,9 @@ class QueryResult(db.Model, BelongsToOrgMixin):
             query_hash = query
         else:
             query_hash = gen_query_hash(query)
+
+        if max_age == -1 and settings.QUERY_RESULTS_EXPIRED_TTL_ENABLED:
+            max_age = settings.QUERY_RESULTS_EXPIRED_TTL
 
         if max_age == -1 and settings.QUERY_RESULTS_EXPIRED_TTL_ENABLED:
             max_age = settings.QUERY_RESULTS_EXPIRED_TTL
