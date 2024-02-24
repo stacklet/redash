@@ -84,30 +84,25 @@ class User(
     org = db.relationship("Organization", backref=db.backref("users", lazy="dynamic"))
     name = Column(db.String(320))
     email = Column(EmailType)
-    _profile_image_url = Column("profile_image_url", db.String(320), nullable=True)
     password_hash = Column(db.String(128), nullable=True)
     group_ids = Column(
-        "groups", MutableList.as_mutable(postgresql.ARRAY(key_type("Group"))), nullable=True
+        "groups",
+        MutableList.as_mutable(ARRAY(key_type("Group"))),
+        nullable=True,
     )
     api_key = Column(db.String(40), default=lambda: generate_token(40), unique=True)
-    db_role = Column(db.String(128), nullable=True)
 
     disabled_at = Column(db.DateTime(True), default=None, nullable=True)
     details = Column(
-        MutableDict.as_mutable(postgresql.JSON),
+        MutableDict.as_mutable(JSONB),
         nullable=True,
         server_default="{}",
         default={},
     )
-    active_at = json_cast_property(
-        db.DateTime(True), "details", "active_at", default=None
-    )
-    is_invitation_pending = json_cast_property(
-        db.Boolean(True), "details", "is_invitation_pending", default=False
-    )
-    is_email_verified = json_cast_property(
-        db.Boolean(True), "details", "is_email_verified", default=True
-    )
+    active_at = json_cast_property(db.DateTime(True), "details", "active_at", default=None)
+    _profile_image_url = json_cast_property(db.Text(), "details", "profile_image_url", default=None)
+    is_invitation_pending = json_cast_property(db.Boolean(True), "details", "is_invitation_pending", default=False)
+    is_email_verified = json_cast_property(db.Boolean(True), "details", "is_email_verified", default=True)
 
     __tablename__ = "users"
     __table_args__ = (db.Index("users_org_id_email", "org_id", "email", unique=True),)
