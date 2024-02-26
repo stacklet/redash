@@ -228,7 +228,7 @@ class QueryExecutor(object):
                 data,
                 run_time,
                 utcnow(),
-                self.user.db_role,
+                getattr(self.user, "db_role", None),
             )
 
             updated_query_ids = models.Query.update_latest_result(query_result)
@@ -262,7 +262,7 @@ class QueryExecutor(object):
             self.metadata.get("Queue", "unknown"),
             self.metadata.get("query_id", "unknown"),
             self.metadata.get("Username", "unknown"),
-            self.user.db_role,
+            getattr(self.user, "db_role", None),
         )
 
     def _load_data_source(self):
