@@ -11,8 +11,8 @@ from redash.models.parameterized_query import (
 from redash.monitor import rq_job_ids
 from redash.tasks.failure_report import track_failure
 from redash.utils import json_dumps, sentry
-from redash.worker import job, get_job_logger
 from redash.query_runner import NotSupported
+from redash.worker import get_job_logger, job
 
 from .execution import enqueue_query
 

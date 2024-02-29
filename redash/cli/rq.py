@@ -2,6 +2,8 @@ import datetime
 import socket
 import time
 import logging
+import socket
+
 from itertools import chain
 
 from click import argument, Abort

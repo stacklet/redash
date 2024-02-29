@@ -197,6 +197,7 @@ def jwt_token_load_user_from_request(request):
 
     # it might actually be a username or something, but it doesn't actually matter
     email = identity
+
     try:
         user = models.User.get_by_email_and_org(email, org)
     except models.NoResultFound:

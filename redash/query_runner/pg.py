@@ -1,6 +1,6 @@
 import hashlib
-import os
 import logging
+import os
 import select
 from base64 import b64decode
 from tempfile import NamedTemporaryFile
@@ -22,7 +22,6 @@ from redash.query_runner import (
     register,
 )
 from redash import settings
-
 from redash.stacklet.auth import inject_iam_auth
 
 logger = logging.getLogger(__name__)

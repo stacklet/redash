@@ -6,7 +6,7 @@ from functools import reduce
 from operator import or_
 
 from flask_login import AnonymousUserMixin, UserMixin, current_user
-from flask import current_app, url_for, request_started, request_finished
+from flask import current_app, url_for, request_started
 from passlib.apps import custom_app_context as pwd_context
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy_utils import EmailType

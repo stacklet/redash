@@ -16,7 +16,6 @@ from sqlalchemy.orm import (
     contains_eager,
     joinedload,
     load_only,
-    subqueryload,
 )
 from sqlalchemy.orm.exc import NoResultFound  # noqa: F401
 from sqlalchemy_utils import generic_relationship
@@ -38,6 +37,7 @@ from redash.models.base import (
     gfk_type,
     key_type,
     primary_key,
+    BaseQuery,
 )
 from redash.models.changes import Change, ChangeTrackingMixin  # noqa
 from redash.models.mixins import BelongsToOrgMixin, TimestampMixin
@@ -76,24 +76,8 @@ from redash.utils import (
     generate_token,
     json_dumps,
     json_loads,
-    mustache_render,
     mustache_render_escape,
     sentry,
-    gen_query_hash)
-from redash.utils.configuration import ConfigurationContainer
-from redash.models.parameterized_query import ParameterizedQuery
-
-from .base import db, gfk_type, Column, GFKBase, BaseQuery, SearchBaseQuery, key_type, primary_key
-from .changes import ChangeTrackingMixin, Change  # noqa
-from .mixins import BelongsToOrgMixin, TimestampMixin
-from .organizations import Organization
-from .types import (
-    EncryptedConfiguration,
-    Configuration,
-    MutableDict,
-    MutableList,
-    PseudoJSON,
-    pseudo_json_cast_property
 )
 from redash.utils.configuration import ConfigurationContainer
 
@@ -385,11 +369,8 @@ class QueryResult(db.Model, BelongsToOrgMixin):
 
         return query.order_by(cls.retrieved_at.desc()).first()
 
-
     @classmethod
-    def store_result(
-        cls, org, data_source, query_hash, query, data, run_time, retrieved_at, db_role
-    ):
+    def store_result(cls, org, data_source, query_hash, query, data, run_time, retrieved_at, db_role):
         query_result = cls(
             org_id=org,
             query_hash=query_hash,
