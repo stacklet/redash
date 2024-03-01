@@ -247,11 +247,7 @@ class QueryExecutor:
     def _log_progress(self, state):
         logger.info(
             "job=execute_query state=%s query_hash=%s type=%s ds_id=%d "
-<<<<<<< HEAD
-            "job_id=%s queue=%s query_id=%s username=%s",  # fmt: skip
-=======
             "job_id=%s queue=%s query_id=%s username=%s db_role=%s",
->>>>>>> 1d26ca0c8 (feat: add db_role to Users and QueryResults models (ENG-2473, ENG-2475) (#45))
             state,
             self.query_hash,
             self.data_source.type,
