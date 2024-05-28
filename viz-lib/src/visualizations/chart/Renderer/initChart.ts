@@ -36,7 +36,6 @@ function initPlotUpdater() {
       }
       return updater;
     },
-    // @ts-expect-error ts-migrate(7023) FIXME: 'process' implicitly has return type 'any' because... Remove this comment to see the full error message
     process(plotlyElement: any) {
       if (actions.length > 0) {
         const updates = reduce(actions, (updates, action) => merge(updates, action[0]), {});
@@ -154,7 +153,6 @@ export default function initChart(container: any, options: any, data: any, addit
     initialized: promise.then(() => result),
     setZoomEnabled: createSafeFunction((allowZoom: any) => {
       const layoutUpdates = { dragmode: allowZoom ? "zoom" : false };
-      // @ts-expect-error ts-migrate(2345) FIXME: Argument of type '{ dragmode: string | boolean; }'... Remove this comment to see the full error message
       return Plotly.relayout(container, layoutUpdates);
     }),
     destroy: createSafeFunction(() => {
