@@ -105,6 +105,7 @@ export const Auth = {
   requireSession() {
     logger("Requested authentication");
     if (Auth.isAuthenticated()) {
+      notifySessionRestored();  // Stacklet: if logged in via Stacklet, handle the popup login, if present
       return Promise.resolve(session);
     }
     return Auth.loadSession()
