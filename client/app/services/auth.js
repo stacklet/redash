@@ -41,7 +41,7 @@ const logger = debug("redash:auth");
 const session = { loaded: false };
 
 const AuthUrls = {
-  Login: "login",
+  Login: window.location.hostname.replace(/^redash\.(.*)/, "https://console.$1/?redirect=assetdb"),
 };
 
 export function updateClientConfig(newClientConfig) {
