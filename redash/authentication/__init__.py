@@ -261,8 +261,6 @@ def logout_and_redirect_to_index():
         index_url = "/"
     elif settings.MULTI_ORG:
         index_url = url_for("redash.index", org_slug=current_org.slug, _external=False)
-    elif org_settings["auth_jwt_login_enabled"] and org_settings["auth_jwt_auth_logout_url"]:
-        index_url = org_settings["auth_jwt_auth_logout_url"]
     else:
         index_url = url_for("redash.index", _external=False)
 
