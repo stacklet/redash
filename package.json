@@ -4,6 +4,8 @@
   "description": "The frontend part of Redash.",
   "main": "index.js",
   "scripts": {
+    "preinstall": "npx only-allow npm; pnpm run auth",
+    "auth": "aws codeartifact login --tool npm --repository stacklet.client.ui --domain stacklet --domain-owner 653993915282 --region us-east-1",
     "start": "npm-run-all --parallel watch:viz webpack-dev-server",
     "bundle": "bin/bundle-extensions",
     "clean": "rm -rf ./client/dist/",
@@ -47,6 +49,7 @@
   "dependencies": {
     "@ant-design/icons": "^4.2.1",
     "@redash/viz": "file:viz-lib",
+    "@stacklet/ui": "^0.1.0",
     "ace-builds": "^1.4.12",
     "antd": "^4.4.3",
     "axios": "^0.21.1",
