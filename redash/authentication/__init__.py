@@ -218,12 +218,53 @@ def jwt_token_load_user_from_request(request):
                 user_groups.discard("admin")
             user.update_group_assignments(user_groups)
 
+    if demo_group := payload.get("custom:demoGroup"):
+        sync_demo_user(user, demo_group)
+
     db_role = payload.get("stacklet:db_role") or None  # force None instead of empty string, JIC
     if db_role != user.db_role:
         user.db_role = db_role
         models.db.session.commit()
 
     return user
+
+
+def sync_demo_user(user: models.User, demo_group: str):
+    logger.info("SYNC_DEMO_USER", user.name, user.db_role, demo_group)
+    if user.org.name == demo_group:
+        return
+
+    group_name = "default"
+    org = models.Organization.query.get_by_slug(demo_group)
+    if not org:
+        org = models.Organization(name=demo_group, slug=demo_group)
+        models.db.session.add(org)
+
+    group = models.Group.query.filter(
+        models.Group.org == org,
+        models.Group.name == group_name,
+    )
+    if not group:
+        group = models.Group(
+            name=group_name,
+            org=org,
+            type=models.Group.BUILTIN_GROUP,
+            permissions={
+                "execute_query",
+                "list_alerts",
+                "list_dashboards",
+                "schedule_query",
+                "view_query",
+                "view_source",
+            }
+        )
+        models.db.session.add(group)
+
+    # ensure the user is in the right org and group
+    user.org = org
+    user.group_uids = [group.uid]
+
+    models.db.session.commit()
 
 
 def log_user_logged_in(app, user):
