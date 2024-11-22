@@ -203,7 +203,11 @@ def jwt_token_load_user_from_request(request):
     except models.NoResultFound:
         user = create_and_login_user(current_org, email, email)
 
-    if "stacklet:permissions" in payload:
+    if payload.get("custom:demoGroup"):
+        demo_group_name = ensure_demo_group(current_org)
+        # ensure the user only belongs to that group
+        user.update_group_assignments([demo_group_name], include_default_group=False)
+    elif "stacklet:permissions" in payload:
         try:
             permissions = json.loads(payload["stacklet:permissions"])
         except json.JSONDecodeError as e:
@@ -224,6 +228,53 @@ def jwt_token_load_user_from_request(request):
         models.db.session.commit()
 
     return user
+
+
+def ensure_demo_group(org):
+    group_name = "demo"
+    group_permissions = [
+        "view_query",
+        "execute_query",
+        "schedule_query",
+        "list_dashboards",
+        "list_alerts",
+        "list_data_sources",
+    ]
+    demo_group = models.Group.query.filter(
+        models.Group.org == org,
+        models.Group.name == group_name,
+    ).one_or_none()
+    if demo_group:
+        if set(demo_group.permissions) != set(group_permissions):
+            demo_group.permissions = group_permissions
+            models.db.session.add(demo_group)
+    else:
+        demo_group = models.Group(
+            name=group_name,
+            org=org,
+            permissions=group_permissions,
+            type=models.Group.BUILTIN_GROUP,
+        )
+        models.db.session.add(demo_group)
+
+    data_source = models.DataSource.query.filter(
+        models.DataSource.name == "Stacklet AssetDB Source",
+        models.DataSource.org == org,
+    ).one_or_none()
+    if data_source:
+        dsg = models.DataSourceGroup.query.filter(
+            models.DataSourceGroup.data_source == data_source,
+            models.DataSourceGroup.group == demo_group,
+        ).one_or_none()
+        if not dsg:
+            dsg = models.DataSourceGroup(
+                data_source=data_source,
+                group=demo_group,
+            )
+            models.db.session.add(dsg)
+
+    models.db.session.commit()
+    return group_name
 
 
 def log_user_logged_in(app, user):
