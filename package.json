@@ -4,7 +4,6 @@
   "description": "The frontend part of Redash.",
   "main": "index.js",
   "scripts": {
-    "auth": "aws codeartifact login --tool npm --repository stacklet.client.ui --domain stacklet --domain-owner 653993915282 --region us-east-1",
     "start": "npm-run-all --parallel watch:viz webpack-dev-server",
     "clean": "rm -rf ./client/dist/",
     "build:viz": "(cd viz-lib && yarn build:babel)",
@@ -26,7 +25,7 @@
     "test": "run-s type-check jest",
     "test:watch": "jest --watch",
     "cypress": "node client/cypress/cypress.js",
-    "preinstall": "yarn run auth; cd viz-lib && yarn link --link-folder ../.yarn",
+    "preinstall": "cd viz-lib && yarn link --link-folder ../.yarn",
     "postinstall": "(cd viz-lib && yarn --frozen-lockfile && yarn build:babel) && yarn link --link-folder ./.yarn @redash/viz"
   },
   "repository": {
@@ -47,7 +46,6 @@
   "dependencies": {
     "@ant-design/icons": "^4.2.1",
     "@redash/viz": "file:viz-lib",
-    "@stacklet/ui": "^0.1.0",
     "ace-builds": "^1.4.12",
     "antd": "^4.4.3",
     "axios": "0.27.2",
@@ -181,8 +179,8 @@
     ]
   },
   "browser": {
-    "fs": false,
-    "path": false
+      "fs": false,
+      "path": false
   },
   "//": "browserslist set to 'Async functions' compatibility",
   "browserslist": [
