@@ -226,9 +226,10 @@ class User(TimestampMixin, db.Model, BelongsToOrgMixin, UserMixin, PermissionsCh
     def verify_password(self, password):
         return self.password_hash and pwd_context.verify(password, self.password_hash)
 
-    def update_group_assignments(self, group_names):
+    def update_group_assignments(self, group_names, include_default_group=True):
         groups = Group.find_by_name(self.org, group_names)
-        groups.append(self.org.default_group)
+        if include_default_group:
+            groups.append(self.org.default_group)
         self.group_ids = [g.id for g in groups]
         db.session.add(self)
         db.session.commit()

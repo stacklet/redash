@@ -203,7 +203,10 @@ def jwt_token_load_user_from_request(request):
     except models.NoResultFound:
         user = create_and_login_user(current_org, email, email)
 
-    if "stacklet:permissions" in payload:
+    if payload.get("custom:demoGroup"):
+        # this is a demo user, should belong only to the limited "demo" group
+        user.update_group_assignments("demo", include_default_group=False)
+    elif "stacklet:permissions" in payload:
         try:
             permissions = json.loads(payload["stacklet:permissions"])
         except json.JSONDecodeError as e:
