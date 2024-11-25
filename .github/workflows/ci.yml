@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - master
+      - shared-demo
   pull_request_target:
     branches:
       - master
+      - shared-demo
 env:
   NODE_VERSION: 18
   YARN_VERSION: 1.22.22
