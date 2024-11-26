@@ -1,4 +1,4 @@
-# private pypi configuration - available within stacklet org
+# private npm configuration - available within stacklet org
 pkg_domain := "stacklet"
 pkg_repo := "stacklet.client.ui"
 pkg_owner := "653993915282"
