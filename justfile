@@ -19,8 +19,13 @@ pkg-login:
 		npm config delete always-auth || true;
 		# npm config set always-auth true won't work anymore as it's not a supported
 		# options, so prepend always-auth = true to the top of the file
-		echo "Add always-auth = true to ~/.npmrc";
-		sed -i "1ialways-auth = true" "${HOME}/.npmrc";
+		if [ "$(uname)" = "Darwin" ]; then
+			echo "Add always-auth = true to ~/.npmrc (on macOS)";
+		  printf "1i\nalways-auth = true\n.\nw\n" | /bin/ed -s "${HOME}/.npmrc"
+		else
+			echo "Add always-auth = true to ~/.npmrc (on GNU/Linux)";
+		   sed -i "1ialways-auth = true" "${HOME}/.npmrc";
+		fi
 	else
 		# if no .npmrc then just make one with always-auth in it
 		echo "Add always-auth = true to ~/.npmrc";
