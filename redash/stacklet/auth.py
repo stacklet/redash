@@ -82,15 +82,6 @@ def get_db_cred_secret(dbcreds):
     return json.loads(secret["SecretString"])
 
 
-def get_redis_auth_token():
-    token_arn = os.environ.get("REDASH_REDIS_TOKEN_ARN")
-    if not token_arn:
-        return None
-    client = boto3.client("secretsmanager")
-    secret = client.get_secret_value(SecretId=token_arn)
-    return secret["SecretString"]
-
-
 def parse_iam_auth(host):
     """parse_iam_auth: parses the host and returns (True, host)
     if the iam_auth=true query parameter is found."""
