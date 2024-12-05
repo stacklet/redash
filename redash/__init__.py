@@ -13,7 +13,6 @@ from redash import settings
 from redash.app import create_app  # noqa
 from redash.destinations import import_destinations
 from redash.query_runner import import_query_runners
-from redash.stacklet.auth import get_redis_auth_token
 
 __version__ = "24.05.0-dev"
 
@@ -44,8 +43,9 @@ def setup_logging():
 
 setup_logging()
 
-redis_connection = redis.from_url(settings.REDIS_URL, password=get_redis_auth_token())
-rq_redis_connection = redis.from_url(settings.RQ_REDIS_URL, password=get_redis_auth_token())
+redis_token = os.environ.get("REDASH_REDIS_TOKEN") or None
+redis_connection = redis.from_url(settings.REDIS_URL, password=redis_token)
+rq_redis_connection = redis.from_url(settings.RQ_REDIS_URL, password=redis_token)
 mail = Mail()
 migrate = Migrate(compare_type=True)
 statsd_client = StatsClient(host=settings.STATSD_HOST, port=settings.STATSD_PORT, prefix=settings.STATSD_PREFIX)
