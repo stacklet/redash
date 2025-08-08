@@ -348,7 +348,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         )
 
     @classmethod
-    def get_latest(cls, data_source, query, max_age=0, is_hash=False):
+    def get_latest(cls, data_source, query, max_age=0, is_hash=False, db_role=None):
         if is_hash:
             query_hash = query
         else:
@@ -363,6 +363,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
             query = cls.query.filter(
                 cls.query_hash == query_hash,
                 cls.data_source == data_source,
+                cls.db_role == db_role,
                 (
                     db.func.timezone("utc", cls.retrieved_at) + datetime.timedelta(seconds=max_age)
                     >= db.func.timezone("utc", db.func.now())
