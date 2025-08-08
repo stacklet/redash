@@ -79,6 +79,7 @@ def create_tables():
         sqlalchemy.orm.configure_mappers()
         db.create_all()
 
+        db.session.execute(f"SET search_path to {settings.SQLALCHEMY_DATABASE_SCHEMA}")
         db.session.execute("ALTER TABLE query_results ENABLE ROW LEVEL SECURITY")
         db.session.execute(
             """
