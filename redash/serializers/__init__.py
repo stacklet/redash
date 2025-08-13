@@ -126,14 +126,6 @@ def serialize_query(
     else:
         d["last_modified_by_id"] = query.last_modified_by_id
 
-    if with_stats:
-        if query.latest_query_data is not None:
-            d["retrieved_at"] = query.retrieved_at
-            d["runtime"] = query.runtime
-        else:
-            d["retrieved_at"] = None
-            d["runtime"] = None
-
     if with_visualizations:
         d["visualizations"] = [serialize_visualization(vis, with_query=False) for vis in query.visualizations]
 
@@ -149,6 +141,10 @@ def serialize_query(
         db_role=getattr(current_user, "db_role", None),
     )
     d["latest_query_data_id"] = latest_result and latest_result.id or None
+
+    if with_stats:
+        d["retrieved_at"] = latest_result and latest_result.retrieved_at or None
+        d["runtime"] = latest_result and latest_result.runtime or None
 
     return d
 
