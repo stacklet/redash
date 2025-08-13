@@ -185,6 +185,7 @@ class QueryResultListResource(BaseResource):
             query_id,
             should_apply_auto_limit,
             max_age,
+            db_role=getattr(self.current_user, "db_role", None),
         )
 
 
@@ -274,7 +275,7 @@ class QueryResultResource(BaseResource):
                 query_id,
                 should_apply_auto_limit,
                 max_age,
-                db_role=self.current_user.db_role,
+                db_role=getattr(self.current_user, "db_role", None),
             )
         else:
             if not query.parameterized.is_safe:
