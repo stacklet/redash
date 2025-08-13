@@ -137,17 +137,18 @@ def serialize_query(
     if with_visualizations:
         d["visualizations"] = [serialize_visualization(vis, with_query=False) for vis in query.visualizations]
 
-    if getattr(current_user, "db_role", None):
-        # Override the latest_query_data_id for users with a db_role because
-        # they may not actually be able to see that one due to their db_role
-        # and may have one specific to them instead.
-        latest_result = models.QueryResult.get_latest(
-            data_source=query.data_source,
-            query=query.query_hash,
-            max_age=-1,
-            is_hash=True,
-        )
-        d["latest_query_data_id"] = latest_result and latest_result.id or None
+    # Override the latest_query_data_id to use results matching the active
+    # user's db_role. This ensures that users with full row-level access
+    # get complete result sets, and users with restrictions only get result
+    # sets with those same restrictions applied.
+    latest_result = models.QueryResult.get_latest(
+        data_source=query.data_source,
+        query=query.query_hash,
+        max_age=-1,
+        is_hash=True,
+        db_role=getattr(current_user, "db_role", None),
+    )
+    d["latest_query_data_id"] = latest_result and latest_result.id or None
 
     return d
 
