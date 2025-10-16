@@ -322,7 +322,8 @@ class QueryResultResource(BaseResource):
                 # query.latest_query_data_id isn't db_role-specific, so
                 # ignore it and fetch the latest results for the current
                 # user's role.
-                query_result = models.QueryResult.get_latest(
+                query_result = get_object_or_404(
+                    models.QueryResult.get_latest,
                     data_source=query.data_source,
                     query=query.query_hash,
                     max_age=-1,
