@@ -46,7 +46,7 @@ def _load_result(query_id, org, user):
             raise Exception("Failed loading results for query id {}: {}".format(query.id, error))
         logger.info("On-demand query completed in {} seconds".format(run_time))
         query_result = models.QueryResult.store_result(
-            org,
+            org.id,
             query.data_source,
             query.query_hash,
             query.query_text,

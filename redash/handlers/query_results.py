@@ -69,7 +69,7 @@ def run_query(query, parameters, data_source, query_id, should_apply_auto_limit,
         return error_response(message)
 
     try:
-        query.apply(parameters, db_role=db_role)
+        query.apply(parameters, current_user)
     except (InvalidParameterError, QueryDetachedFromDataSourceError) as e:
         abort(400, message=str(e))
 
