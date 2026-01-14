@@ -32,7 +32,7 @@ def _load_result(query_id, org, db_role=None):
             db_role=db_role,
         )
         if not query_result:
-            raise NoResultFound("No cached result available for query {}.".format(query_id))
+            raise NoResultFound("No cached result available for query {} with db_role {}.".format(query_id, db_role))
         return query_result.data
     else:
         raise QueryDetachedFromDataSourceError(query_id)
