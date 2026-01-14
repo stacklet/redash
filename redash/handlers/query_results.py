@@ -1,12 +1,10 @@
 import unicodedata
 from urllib.parse import quote
-import logging
 
 import regex
 from flask import make_response, request
 from flask_login import current_user
 from flask_restful import abort
-from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, record_event, add_cors_headers
@@ -199,7 +197,7 @@ class QueryResultDropdownResource(BaseResource):
         query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
         require_access(query.data_source, current_user, view_only)
         try:
-            return dropdown_values(query_id, self.current_org)
+            return dropdown_values(query_id, self.current_org, self.current_user)
         except QueryDetachedFromDataSourceError as e:
             abort(400, message=str(e))
 
@@ -214,11 +212,7 @@ class QueryDropdownsResource(BaseResource):
             dropdown_query = get_object_or_404(models.Query.get_by_id_and_org, dropdown_query_id, self.current_org)
             require_access(dropdown_query.data_source, current_user, view_only)
 
-        try:
-            return dropdown_values(dropdown_query_id, self.current_org, db_role=getattr(self.current_user, "db_role", None))
-        except NoResultFound as e:
-            logging.error("Dropdown values not found: %s", e)
-            abort(404)
+        return dropdown_values(dropdown_query_id, self.current_org, self.current_user)
 
 class QueryResultResource(BaseResource):
     @staticmethod

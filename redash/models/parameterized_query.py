@@ -1,13 +1,16 @@
+import logging
 import re
+import time
 from functools import partial
 from numbers import Number
 
 import pystache
 from dateutil.parser import parse
 from funcy import distinct
-from sqlalchemy.orm.exc import NoResultFound
 
-from redash.utils import mustache_render
+from redash.utils import mustache_render, utcnow
+
+logger = logging.getLogger(__name__)
 
 
 def _pluck_name_and_value(default_column, row):
@@ -18,28 +21,45 @@ def _pluck_name_and_value(default_column, row):
     return {"name": row[name_column], "value": str(row[value_column])}
 
 
-def _load_result(query_id, org, db_role=None):
+def _load_result(query_id, org, user):
     from redash import models
 
     query = models.Query.get_by_id_and_org(query_id, org)
+    db_role = getattr(user, "db_role", None)
 
-    if query.data_source:
-        query_result = models.QueryResult.get_latest(
-            data_source=query.data_source,
-            query=query.query_hash,
-            max_age=-1,
-            is_hash=True,
-            db_role=db_role,
-        )
-        if not query_result:
-            raise NoResultFound("No cached result available for query {} with db_role {}.".format(query_id, db_role))
-        return query_result.data
-    else:
+    if not query.data_source:
         raise QueryDetachedFromDataSourceError(query_id)
 
+    query_result = models.QueryResult.get_latest(
+        data_source=query.data_source,
+        query=query.query_hash,
+        max_age=-1,
+        is_hash=True,
+        db_role=db_role,
+    )
+    if not query_result:
+        logger.info("Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(query.id, db_role))
+        started_at = time.time()
+        results, error = query.data_source.query_runner.run_query(query.query_text, user)
+        run_time = time.time() - started_at
+        if error:
+            raise Exception("Failed loading results for query id {}: {}".format(query.id, error))
+        logger.info("On-demand query completed in {} seconds".format(run_time))
+        query_result = models.QueryResult.store_result(
+            org,
+            query.data_source,
+            query.query_hash,
+            query.query_text,
+            results,
+            run_time,
+            utcnow(),
+            db_role,
+        )
+    return query_result.data
 
-def dropdown_values(query_id, org, db_role=None):
-    data = _load_result(query_id, org, db_role)
+
+def dropdown_values(query_id, org, user):
+    data = _load_result(query_id, org, user)
     first_column = data["columns"][0]["name"]
     pluck = partial(_pluck_name_and_value, first_column)
     return list(map(pluck, data["rows"]))
@@ -131,8 +151,8 @@ class ParameterizedQuery:
         self.query = template
         self.parameters = {}
 
-    def apply(self, parameters, db_role=None):
-        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, db_role)]
+    def apply(self, parameters, user):
+        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, user)]
         if invalid_parameter_names:
             raise InvalidParameterError(invalid_parameter_names)
         else:
@@ -141,7 +161,7 @@ class ParameterizedQuery:
 
         return self
 
-    def _valid(self, name, value, db_role=None):
+    def _valid(self, name, value, user):
         if not self.schema:
             return True
 
@@ -168,7 +188,7 @@ class ParameterizedQuery:
             "enum": lambda value: _is_value_within_options(value, enum_options, allow_multiple_values),
             "query": lambda value: _is_value_within_options(
                 value,
-                [v["value"] for v in dropdown_values(query_id, self.org, db_role)],
+                [v["value"] for v in dropdown_values(query_id, self.org, user)],
                 allow_multiple_values,
             ),
             "date": _is_date,
