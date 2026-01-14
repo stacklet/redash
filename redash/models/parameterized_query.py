@@ -45,16 +45,22 @@ def _load_result(query_id, org, user):
         if error:
             raise Exception("Failed loading results for query id {}: {}".format(query.id, error))
         logger.info("On-demand query completed in {} seconds".format(run_time))
+        query_text = query.query_text
+        parameters = {p["name"]: p.get("value") for p in query.parameters}
+        if any(parameters):
+            query_text = query.parameterized.apply(parameters, query.user).query
+        query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
         query_result = models.QueryResult.store_result(
             org.id,
             query.data_source,
             query.query_hash,
-            query.query_text,
+            query_text,
             results,
             run_time,
             utcnow(),
             db_role,
         )
+        models.db.session.commit()
     return query_result.data
 
 
