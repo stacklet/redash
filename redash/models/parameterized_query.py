@@ -5,6 +5,7 @@ from numbers import Number
 import pystache
 from dateutil.parser import parse
 from funcy import distinct
+from sqlalchemy.orm.exc import NoResultFound
 
 from redash.utils import mustache_render
 
@@ -17,20 +18,28 @@ def _pluck_name_and_value(default_column, row):
     return {"name": row[name_column], "value": str(row[value_column])}
 
 
-def _load_result(query_id, org):
+def _load_result(query_id, org, db_role=None):
     from redash import models
 
     query = models.Query.get_by_id_and_org(query_id, org)
 
     if query.data_source:
-        query_result = models.QueryResult.get_by_id_and_org(query.latest_query_data_id, org)
+        query_result = models.QueryResult.get_latest(
+            data_source=query.data_source,
+            query=query.query_hash,
+            max_age=-1,
+            is_hash=True,
+            db_role=db_role,
+        )
+        if not query_result:
+            raise NoResultFound("No cached result available for query {}.".format(query_id))
         return query_result.data
     else:
         raise QueryDetachedFromDataSourceError(query_id)
 
 
-def dropdown_values(query_id, org):
-    data = _load_result(query_id, org)
+def dropdown_values(query_id, org, db_role=None):
+    data = _load_result(query_id, org, db_role)
     first_column = data["columns"][0]["name"]
     pluck = partial(_pluck_name_and_value, first_column)
     return list(map(pluck, data["rows"]))
@@ -122,8 +131,8 @@ class ParameterizedQuery:
         self.query = template
         self.parameters = {}
 
-    def apply(self, parameters):
-        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value)]
+    def apply(self, parameters, db_role=None):
+        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, db_role)]
         if invalid_parameter_names:
             raise InvalidParameterError(invalid_parameter_names)
         else:
@@ -132,7 +141,7 @@ class ParameterizedQuery:
 
         return self
 
-    def _valid(self, name, value):
+    def _valid(self, name, value, db_role=None):
         if not self.schema:
             return True
 
@@ -159,7 +168,7 @@ class ParameterizedQuery:
             "enum": lambda value: _is_value_within_options(value, enum_options, allow_multiple_values),
             "query": lambda value: _is_value_within_options(
                 value,
-                [v["value"] for v in dropdown_values(query_id, self.org)],
+                [v["value"] for v in dropdown_values(query_id, self.org, db_role)],
                 allow_multiple_values,
             ),
             "date": _is_date,
