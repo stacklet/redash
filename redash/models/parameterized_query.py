@@ -7,6 +7,7 @@ from numbers import Number
 import pystache
 from dateutil.parser import parse
 from funcy import distinct
+from rq.timeouts import JobTimeoutException
 
 from redash.utils import mustache_render, utcnow
 
@@ -46,12 +47,17 @@ def _load_result(query_id, org, user, load_on_demand):
         if any(parameters):
             query_text = query.parameterized.apply(parameters, user).query
         query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
-        started_at = time.time()
-        results, error = query.data_source.query_runner.run_query(query_text, user)
-        run_time = time.time() - started_at
+        try:
+            started_at = time.time()
+            results, error = query.data_source.query_runner.run_query(query_text, user)
+            run_time = time.time() - started_at
+            logger.info("On-demand query completed in {} seconds".format(run_time))
+        except JobTimeoutException:
+            raise DropdownSubqueryError(query.id, db_role, "Query exceeded Redash query execution time limit")
+        except Exception as e:
+            raise DropdownSubqueryError(query.id, db_role, str(e))
         if error:
             raise DropdownSubqueryError(query.id, db_role, error)
-        logger.info("On-demand query completed in {} seconds".format(run_time))
         query_result = models.QueryResult.store_result(
             org.id,
             query.data_source,

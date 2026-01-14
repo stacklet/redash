@@ -202,7 +202,7 @@ class QueryResultDropdownResource(BaseResource):
         require_access(query.data_source, current_user, view_only)
         try:
             return dropdown_values(query_id, self.current_org, self.current_user, load_on_demand=True)
-        except (DropdownSubqueryError, QueryDetachedFromDataSourceError) as e:
+        except (DropdownSubqueryError, InvalidParameterError, QueryDetachedFromDataSourceError) as e:
             logger.exception(e)
             abort(400, message=str(e))
 
@@ -219,7 +219,7 @@ class QueryDropdownsResource(BaseResource):
 
         try:
             return dropdown_values(dropdown_query_id, self.current_org, self.current_user, load_on_demand=True)
-        except (DropdownSubqueryError, QueryDetachedFromDataSourceError) as e:
+        except (DropdownSubqueryError, InvalidParameterError, QueryDetachedFromDataSourceError) as e:
             logger.exception(e)
             abort(400, message=str(e))
 
