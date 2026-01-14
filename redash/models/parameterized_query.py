@@ -48,7 +48,7 @@ def _load_result(query_id, org, user):
         query_text = query.query_text
         parameters = {p["name"]: p.get("value") for p in query.parameters}
         if any(parameters):
-            query_text = query.parameterized.apply(parameters, query.user).query
+            query_text = query.parameterized.apply(parameters, user).query
         query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
         query_result = models.QueryResult.store_result(
             org.id,
