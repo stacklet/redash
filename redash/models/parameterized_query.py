@@ -21,7 +21,7 @@ def _pluck_name_and_value(default_column, row):
     return {"name": row[name_column], "value": str(row[value_column])}
 
 
-def _load_result(query_id, org, user):
+def _load_result(query_id, org, user, load_on_demand):
     from redash import models
 
     query = models.Query.get_by_id_and_org(query_id, org)
@@ -38,18 +38,20 @@ def _load_result(query_id, org, user):
         db_role=db_role,
     )
     if not query_result:
+        if not load_on_demand:
+            raise DropdownSubqueryError(query.id, db_role, "cached results not found")
         logger.info("Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(query.id, db_role))
-        started_at = time.time()
-        results, error = query.data_source.query_runner.run_query(query.query_text, user)
-        run_time = time.time() - started_at
-        if error:
-            raise Exception("Failed loading results for query id {}: {}".format(query.id, error))
-        logger.info("On-demand query completed in {} seconds".format(run_time))
         query_text = query.query_text
         parameters = {p["name"]: p.get("value") for p in query.parameters}
         if any(parameters):
             query_text = query.parameterized.apply(parameters, user).query
         query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
+        started_at = time.time()
+        results, error = query.data_source.query_runner.run_query(query_text, user)
+        run_time = time.time() - started_at
+        if error:
+            raise DropdownSubqueryError(query.id, db_role, error)
+        logger.info("On-demand query completed in {} seconds".format(run_time))
         query_result = models.QueryResult.store_result(
             org.id,
             query.data_source,
@@ -64,8 +66,8 @@ def _load_result(query_id, org, user):
     return query_result.data
 
 
-def dropdown_values(query_id, org, user):
-    data = _load_result(query_id, org, user)
+def dropdown_values(query_id, org, user, load_on_demand=False):
+    data = _load_result(query_id, org, user, load_on_demand)
     first_column = data["columns"][0]["name"]
     pluck = partial(_pluck_name_and_value, first_column)
     return list(map(pluck, data["rows"]))
@@ -243,4 +245,13 @@ class QueryDetachedFromDataSourceError(Exception):
         self.query_id = query_id
         super(QueryDetachedFromDataSourceError, self).__init__(
             "This query is detached from any data source. Please select a different query."
+        )
+
+class DropdownSubqueryError(Exception):
+    def __init__(self, query_id, db_role, error):
+        self.query_id = query_id
+        self.db_role = db_role
+        self.error = error
+        super(DropdownSubqueryError, self).__init__(
+            "Error loading dropdown values for query id {} and db_role {}: {}".format(query_id, db_role, error)
         )
