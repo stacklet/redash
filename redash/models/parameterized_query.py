@@ -22,8 +22,16 @@ def _pluck_name_and_value(default_column, row):
     return {"name": row[name_column], "value": str(row[value_column])}
 
 
-def _load_result(query_id, org, user, load_on_demand):
+def _load_result(query_id, org, user, load_on_demand, query_stack=None):
     from redash import models
+
+    # Initialize query stack for cycle detection
+    if query_stack is None:
+        query_stack = set()
+
+    # Detect cycle
+    if query_id in query_stack:
+        raise ParameterizedQueryCycleError(query_id, query_stack)
 
     query = models.Query.get_by_id_and_org(query_id, org)
     db_role = getattr(user, "db_role", None)
@@ -45,7 +53,8 @@ def _load_result(query_id, org, user, load_on_demand):
         query_text = query.query_text
         parameters = {p["name"]: p.get("value") for p in query.parameters}
         if any(parameters):
-            query_text = query.parameterized.apply(parameters, user).query
+            # Add current query to stack before recursing
+            query_text = query.parameterized.apply(parameters, user, query_stack | {query_id}).query
         query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
         try:
             started_at = time.time()
@@ -72,8 +81,8 @@ def _load_result(query_id, org, user, load_on_demand):
     return query_result.data
 
 
-def dropdown_values(query_id, org, user, load_on_demand=False):
-    data = _load_result(query_id, org, user, load_on_demand)
+def dropdown_values(query_id, org, user, load_on_demand=False, query_stack=None):
+    data = _load_result(query_id, org, user, load_on_demand, query_stack)
     first_column = data["columns"][0]["name"]
     pluck = partial(_pluck_name_and_value, first_column)
     return list(map(pluck, data["rows"]))
@@ -165,8 +174,8 @@ class ParameterizedQuery:
         self.query = template
         self.parameters = {}
 
-    def apply(self, parameters, user):
-        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, user)]
+    def apply(self, parameters, user, query_stack=None):
+        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, user, query_stack)]
         if invalid_parameter_names:
             raise InvalidParameterError(invalid_parameter_names)
         else:
@@ -175,7 +184,7 @@ class ParameterizedQuery:
 
         return self
 
-    def _valid(self, name, value, user):
+    def _valid(self, name, value, user, query_stack=None):
         if not self.schema:
             return True
 
@@ -202,7 +211,7 @@ class ParameterizedQuery:
             "enum": lambda value: _is_value_within_options(value, enum_options, allow_multiple_values),
             "query": lambda value: _is_value_within_options(
                 value,
-                [v["value"] for v in dropdown_values(query_id, self.org, user)],
+                [v["value"] for v in dropdown_values(query_id, self.org, user, query_stack=query_stack)],
                 allow_multiple_values,
             ),
             "date": _is_date,
@@ -260,4 +269,13 @@ class DropdownSubqueryError(Exception):
         self.error = error
         super(DropdownSubqueryError, self).__init__(
             "Error loading dropdown values for query id {} and db_role {}: {}".format(query_id, db_role, error)
+        )
+
+class ParameterizedQueryCycleError(DropdownSubqueryError):
+    def __init__(self, query_id, query_stack):
+        self.query_id = query_id
+        self.query_stack = query_stack
+        cycle_path = " -> ".join(str(qid) for qid in query_stack) + " -> " + str(query_id)
+        super(ParameterizedQueryCycleError, self).__init__(
+            "Circular dependency detected in dropdown parameter queries: {}".format(cycle_path)
         )
