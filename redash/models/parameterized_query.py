@@ -29,12 +29,13 @@ def _load_result(query_id, org, user, run_if_not_cached, query_stack=None):
     if query_stack is None:
         query_stack = set()
 
+    db_role = getattr(user, "db_role", None)
+
     # Detect cycle
     if query_id in query_stack:
-        raise ParameterizedQueryCycleError(query_id, query_stack)
+        raise ParameterizedQueryCycleError(query_id, db_role, query_stack)
 
     query = models.Query.get_by_id_and_org(query_id, org)
-    db_role = getattr(user, "db_role", None)
 
     if not query.data_source:
         raise QueryDetachedFromDataSourceError(query_id)
@@ -51,11 +52,13 @@ def _load_result(query_id, org, user, run_if_not_cached, query_stack=None):
             raise DropdownSubqueryError(query.id, db_role, "cached results not found")
         logger.info("Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(query.id, db_role))
         query_text = query.query_text
-        parameters = {p["name"]: p.get("value") for p in query.parameters}
-        if any(parameters):
-            # Add current query to stack before recursing
-            query_text = query.parameterized.apply(parameters, user, query_stack | {query_id}).query
-        query_text = query.data_source.query_runner.apply_auto_limit(query_text, query.options.get("apply_auto_limit", False))
+        if query.options:
+            parameters = {p["name"]: p.get("value") for p in query.parameters}
+            if any(parameters):
+                # query_stack is used to detect cycles in dropdown parameter queries
+                query_text = query.parameterized.apply(parameters, user, query_stack | {query_id}).query
+            apply_auto_limit = query.options.get("apply_auto_limit", False)
+            query_text = query.data_source.query_runner.apply_auto_limit(query_text, apply_auto_limit)
         try:
             started_at = time.time()
             results, error = query.data_source.query_runner.run_query(query_text, user)
@@ -271,10 +274,12 @@ class DropdownSubqueryError(Exception):
         )
 
 class ParameterizedQueryCycleError(DropdownSubqueryError):
-    def __init__(self, query_id, query_stack):
+    def __init__(self, query_id, db_role, query_stack):
         self.query_id = query_id
         self.query_stack = query_stack
         cycle_path = " -> ".join(str(qid) for qid in query_stack) + " -> " + str(query_id)
         super(ParameterizedQueryCycleError, self).__init__(
-            "Circular dependency detected in dropdown parameter queries: {}".format(cycle_path)
+            query_id,
+            db_role,
+            "Circular dependency detected in dropdown parameter queries: {}".format(cycle_path),
         )
