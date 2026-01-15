@@ -22,7 +22,7 @@ def _pluck_name_and_value(default_column, row):
     return {"name": row[name_column], "value": str(row[value_column])}
 
 
-def _load_result(query_id, org, user, load_on_demand, query_stack=None):
+def _load_result(query_id, org, user, run_if_not_cached, query_stack=None):
     from redash import models
 
     # Initialize query stack for cycle detection
@@ -47,7 +47,7 @@ def _load_result(query_id, org, user, load_on_demand, query_stack=None):
         db_role=db_role,
     )
     if not query_result:
-        if not load_on_demand:
+        if not run_if_not_cached:
             raise DropdownSubqueryError(query.id, db_role, "cached results not found")
         logger.info("Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(query.id, db_role))
         query_text = query.query_text
@@ -77,12 +77,11 @@ def _load_result(query_id, org, user, load_on_demand, query_stack=None):
             utcnow(),
             db_role,
         )
-        models.db.session.commit()
     return query_result.data
 
 
-def dropdown_values(query_id, org, user, load_on_demand=False, query_stack=None):
-    data = _load_result(query_id, org, user, load_on_demand, query_stack)
+def dropdown_values(query_id, org, user, run_if_not_cached=False, query_stack=None):
+    data = _load_result(query_id, org, user, run_if_not_cached, query_stack)
     first_column = data["columns"][0]["name"]
     pluck = partial(_pluck_name_and_value, first_column)
     return list(map(pluck, data["rows"]))
