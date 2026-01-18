@@ -1,2 +1,4 @@
-yarn 1.22.19
-just 1.36.0
+yarn   1.22.19
+just   1.36.0
+poetry 1.8.3
+python 3.10.11

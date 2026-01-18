@@ -345,6 +345,7 @@ class QueryArchiveTest(BaseTestCase):
             {"columns": {}, "rows": []},
             123,
             yesterday,
+            None,
         )
 
         query.latest_query_data = query_result
@@ -529,6 +530,7 @@ class TestQueryResultStoreResult(BaseTestCase):
             self.data,
             self.runtime,
             self.utcnow,
+            None,
         )
 
         self.assertEqual(query_result.data, self.data)

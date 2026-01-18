@@ -48,6 +48,8 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False):
     dbcreds (optional) AWS Secrets Manager ARN to load a {user: .., password: ..} JSON credential
     disable_iam_auth (optional, default: False) disable attempts to perform IAM auth
     """
+    if dburi is None:
+        return None
     url = sqlalchemy.engine.url.make_url(dburi)
     iam_auth = url.query.get("iam_auth")
     url = sqlalchemy.engine.url.make_url(str(url).split("?")[0])

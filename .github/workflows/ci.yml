@@ -2,10 +2,10 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - stacklet/integration
   pull_request:
     branches:
-      - master
+      - stacklet/integration
 env:
   NODE_VERSION: 18
   YARN_VERSION: 1.22.22

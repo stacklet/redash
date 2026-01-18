@@ -7,6 +7,33 @@ pkg_region := "us-east-1"
 _:
 	@just --list --unsorted
 
+# Run backend tests locally using CI configuration
+test *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	export COMPOSE_FILE=.ci/compose.ci.yaml
+	export COMPOSE_PROJECT_NAME=redash
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
+
+	echo "Building Docker images..."
+	docker compose build --build-arg install_groups="main,all_ds,dev" --build-arg skip_frontend_build=true
+
+	echo "Starting services..."
+	docker compose up -d
+	sleep 10
+
+	echo "Creating test database and schema..."
+	docker compose exec postgres psql -U postgres -c "CREATE DATABASE tests;" 2>/dev/null || echo "Database 'tests' already exists"
+	docker compose exec postgres psql -U postgres -c "CREATE SCHEMA IF NOT EXISTS redash;" tests
+
+	echo "Running tests..."
+	docker compose run --rm redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc {{ flags }} tests/
+
+	echo "Cleaning up..."
+	docker compose down -v
+
 pkg-login:
 	#!/usr/bin/env bash
 	set -euo pipefail

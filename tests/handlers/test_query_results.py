@@ -296,7 +296,7 @@ class TestQueryResultAPI(BaseTestCase):
 
     def test_access_with_query_api_key_without_query_result_id(self):
         ds = self.factory.create_data_source(group=self.factory.org.default_group, view_only=False)
-        query = self.factory.create_query()
+        query = self.factory.create_query(data_source=ds)
         query_result = self.factory.create_query_result(
             data_source=ds, query_text=query.query_text, query_hash=query.query_hash
         )
