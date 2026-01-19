@@ -20,16 +20,6 @@ lint:
 	poetry run ruff check .
 	poetry run black --check .
 
-# Run frontend unit tests
-frontend-test:
-	@echo "Running frontend unit tests..."
-	yarn test
-	@echo ""
-	@echo "Running viz-lib tests..."
-	cd viz-lib && yarn test
-	@echo ""
-	@echo "✓ All frontend tests passed!"
-
 # Run backend tests locally using CI configuration
 backend-test *flags:
 	#!/usr/bin/env bash
@@ -53,6 +43,44 @@ backend-test *flags:
 
 	echo "Running tests..."
 	docker compose run --rm redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc {{ flags }} tests/
+
+	echo "Cleaning up..."
+	docker compose down -v
+
+# Run frontend unit tests
+frontend-test:
+	@echo "Running frontend unit tests..."
+	yarn test
+	@echo ""
+	@echo "Running viz-lib tests..."
+	cd viz-lib && yarn test
+	@echo ""
+	@echo "✓ All frontend tests passed!"
+
+# Run frontend e2e tests
+frontend-e2e-test:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	echo "Logging in to private npm registry..."
+	just pkg-login
+
+	export COMPOSE_FILE=.ci/compose.cypress.yaml
+	export COMPOSE_PROJECT_NAME=cypress
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
+
+	echo "Building Cypress environment..."
+	yarn cypress build
+
+	echo "Starting Redash server..."
+	yarn cypress start -- --skip-db-seed
+
+	echo "Seeding database..."
+	docker compose run cypress yarn cypress db-seed
+
+	echo "Running Cypress tests..."
+	yarn cypress run-ci
 
 	echo "Cleaning up..."
 	docker compose down -v

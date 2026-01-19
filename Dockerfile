@@ -23,7 +23,8 @@ ENV BABEL_ENV=${code_coverage:+test}
 # Avoid issues caused by lags in disk and network I/O speeds when working on top of QEMU emulation for multi-platform image building.
 RUN yarn config set network-timeout 300000
 
-RUN if [ "x$skip_frontend_build" = "x" ] ; then yarn --frozen-lockfile --network-concurrency 1; fi
+RUN --mount=type=secret,id=npmrc,target=/frontend/.npmrc,mode=0644 \
+    if [ "x$skip_frontend_build" = "x" ] ; then yarn --frozen-lockfile --network-concurrency 1; fi
 
 COPY --chown=redash client /frontend/client
 COPY --chown=redash webpack.config.js /frontend/

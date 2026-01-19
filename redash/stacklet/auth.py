@@ -38,11 +38,12 @@ def create_do_connect_handler(url):
     return handler
 
 
-def get_db(dburi, dbcreds=None, disable_iam_auth=False):
+def get_db(dburi, dbcreds=None, disable_iam_auth=False, schema=None):
     """get_db will attempt to create an engine for the given dburi
 
     dbcreds (optional) AWS Secrets Manager ARN to load a {user: .., password: ..} JSON credential
     disable_iam_auth (optional, default: False) disable attempts to perform IAM auth
+    schema (optional) PostgreSQL schema to use for table operations
     """
     if dburi is None:
         return None
@@ -50,6 +51,10 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False):
     iam_auth = url.query.get("iam_auth")
     url = sqlalchemy.engine.url.make_url(str(url).split("?")[0])
     params = {"json_serializer": json.dumps}
+
+    # Add schema translation if schema is provided
+    if schema:
+        params["execution_options"] = {"schema_translate_map": {None: schema}}
 
     if not disable_iam_auth and iam_auth == "true":
         backend = url.get_backend_name()
@@ -71,6 +76,7 @@ def get_env_db():
     return get_db(
         dburi=os.environ.get("ASSETDB_DATABASE_URI"),
         dbcreds=os.environ.get("ASSETDB_DBCRED_ARN"),
+        schema=os.environ.get("SQLALCHEMY_DB_SCHEMA", "redash"),
     )
 
 

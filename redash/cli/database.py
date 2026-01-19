@@ -32,13 +32,9 @@ def _wait_for_db_connection(db):
 
 def is_db_empty():
     from redash.models import db
-    from redash.stacklet.auth import get_env_db
-
-    engine = get_env_db()
-    db._engine = engine
 
     schema = db.metadata.schema
-    extant_tables = set(sqlalchemy.inspect(engine).get_table_names())
+    extant_tables = set(sqlalchemy.inspect(db.engine).get_table_names(schema=schema))
     redash_tables = set(table.lstrip(f"{schema}.") for table in db.metadata.tables)
     num_missing = len(redash_tables - redash_tables.intersection(extant_tables))
     print(f"Checking schema {schema} for tables {redash_tables}: found {extant_tables} (missing {num_missing})")
@@ -76,16 +72,20 @@ def create_tables():
         sqlalchemy.orm.configure_mappers()
         db.create_all()
 
-        db.session.execute("ALTER TABLE query_results ENABLE ROW LEVEL SECURITY")
+        # Create the limited_visibility role for row-level security policies
+        db.session.execute("CREATE ROLE limited_visibility NOLOGIN")
+
+        schema = settings.SQLALCHEMY_DATABASE_SCHEMA or "public"
+        db.session.execute(f"ALTER TABLE {schema}.query_results ENABLE ROW LEVEL SECURITY")
         db.session.execute(
-            """
-            CREATE POLICY all_visible ON query_results
+            f"""
+            CREATE POLICY all_visible ON {schema}.query_results
             USING (true);
             """
         )
         db.session.execute(
-            """
-            CREATE POLICY limited_visibility ON query_results
+            f"""
+            CREATE POLICY limited_visibility ON {schema}.query_results
             AS RESTRICTIVE
             FOR SELECT
             TO limited_visibility
