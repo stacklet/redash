@@ -7,8 +7,23 @@ pkg_region := "us-east-1"
 _:
 	@just --list --unsorted
 
+# Install dependencies
+install:
+	poetry install --with dev
+	yarn install --frozen-lockfile
+
+# Run frontend unit tests
+frontend-test:
+	@echo "Running frontend unit tests..."
+	yarn test
+	@echo ""
+	@echo "Running viz-lib tests..."
+	cd viz-lib && yarn test
+	@echo ""
+	@echo "✓ All frontend tests passed!"
+
 # Run backend tests locally using CI configuration
-test *flags:
+backend-test *flags:
 	#!/usr/bin/env bash
 	set -euo pipefail
 
