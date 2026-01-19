@@ -331,9 +331,7 @@ class TestQueryResultAPI(BaseTestCase):
 
     def test_query_results_by_db_role(self):
         query = self.factory.create_query()
-        admin_result = self.factory.create_query_result(
-            query_text=query.query_text, query_hash=query.query_hash
-        )
+        admin_result = self.factory.create_query_result(query_text=query.query_text, query_hash=query.query_hash)
         limited_result = self.factory.create_query_result(
             query_text=query.query_text,
             query_hash=query.query_hash,
@@ -356,13 +354,9 @@ class TestQueryResultAPI(BaseTestCase):
         )
         self.assertEqual(query.latest_query_data_id, limited_result.id)
         self.assertEqual(admin_response.status_code, 200)
-        self.assertEqual(
-            admin_response.get_json()["query_result"]["id"], admin_result.id
-        )
+        self.assertEqual(admin_response.get_json()["query_result"]["id"], admin_result.id)
         self.assertEqual(limited_response.status_code, 200)
-        self.assertEqual(
-            limited_response.get_json()["query_result"]["id"], limited_result.id
-        )
+        self.assertEqual(limited_response.get_json()["query_result"]["id"], limited_result.id)
 
 
 class TestQueryResultDropdownResource(BaseTestCase):

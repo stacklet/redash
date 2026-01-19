@@ -5,9 +5,9 @@ import numbers
 import time
 
 import pytz
+from flask_login import current_user
 from sqlalchemy import UniqueConstraint, and_, cast, distinct, func, or_
 from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB
-from flask_login import current_user
 from sqlalchemy.event import listens_for
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
@@ -30,6 +30,7 @@ from redash.destinations import (
 )
 from redash.metrics import database  # noqa: F401
 from redash.models.base import (
+    BaseQuery,
     Column,
     GFKBase,
     SearchBaseQuery,
@@ -37,7 +38,6 @@ from redash.models.base import (
     gfk_type,
     key_type,
     primary_key,
-    BaseQuery,
 )
 from redash.models.changes import Change, ChangeTrackingMixin  # noqa
 from redash.models.mixins import BelongsToOrgMixin, TimestampMixin
@@ -377,9 +377,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         return query.order_by(cls.retrieved_at.desc()).first()
 
     @classmethod
-    def store_result(
-        cls, org, data_source, query_hash, query, data, run_time, retrieved_at, db_role
-    ):
+    def store_result(cls, org, data_source, query_hash, query, data, run_time, retrieved_at, db_role):
         query_result = cls(
             org_id=org,
             query_hash=query_hash,
@@ -417,7 +415,7 @@ def prefilter_query_results(query):
     directly against that table and get around this check.
     """
     for desc in query.column_descriptions:
-        if desc['type'] is QueryResult:
+        if desc["type"] is QueryResult:
             db_role = getattr(current_user, "db_role", None)
             if not db_role:
                 continue
@@ -425,7 +423,7 @@ def prefilter_query_results(query):
             offset = query._offset
             query = query.limit(None).offset(None)
             query.offset(None)
-            query = query.filter(desc['entity'].db_role == db_role)
+            query = query.filter(desc["entity"].db_role == db_role)
             query = query.limit(limit).offset(offset)
     return query
 
@@ -764,6 +762,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     @classmethod
     def all_groups_for_query_ids(cls, query_ids):
         from redash.utils import get_schema
+
         schema = get_schema()
         schema_prefix = f"{schema}." if schema else ""
         query = f"""SELECT group_id, view_only

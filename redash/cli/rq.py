@@ -1,11 +1,10 @@
 import datetime
+import logging
 import socket
 import time
-import logging
-
 from itertools import chain
 
-from click import argument, Abort
+from click import Abort, argument
 from flask.cli import AppGroup
 from rq import Connection
 from rq.worker import WorkerStatus
@@ -58,9 +57,7 @@ class SchedulerHealthcheck(base.BaseCheck):
         is_healthy = pjobs_ok
 
         self._log(
-            "Scheduler healthcheck: "
-            "Periodic jobs ok? %s (%s/%s jobs scheduled). "
-            "==> Is healthy? %s",
+            "Scheduler healthcheck: " "Periodic jobs ok? %s (%s/%s jobs scheduled). " "==> Is healthy? %s",
             pjobs_ok,
             num_pjobs - num_missing_pjobs,
             num_pjobs,
@@ -72,9 +69,7 @@ class SchedulerHealthcheck(base.BaseCheck):
 
 @manager.command()
 def scheduler_healthcheck():
-    return check_runner.CheckRunner(
-        "scheduler_healthcheck", "scheduler", None, [(SchedulerHealthcheck, {})]
-    ).run()
+    return check_runner.CheckRunner("scheduler_healthcheck", "scheduler", None, [(SchedulerHealthcheck, {})]).run()
 
 
 @manager.command()
@@ -138,6 +133,4 @@ class WorkerHealthcheck(base.BaseCheck):
 
 @manager.command()
 def worker_healthcheck():
-    return check_runner.CheckRunner(
-        "worker_healthcheck", "worker", None, [(WorkerHealthcheck, {})]
-    ).run()
+    return check_runner.CheckRunner("worker_healthcheck", "worker", None, [(WorkerHealthcheck, {})]).run()

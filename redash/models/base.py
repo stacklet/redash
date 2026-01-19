@@ -1,15 +1,15 @@
 import functools
 
 from flask_sqlalchemy import BaseQuery, SQLAlchemy
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import MetaData
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import object_session
 from sqlalchemy.pool import NullPool
 from sqlalchemy_searchable import SearchQueryMixin, make_searchable, vectorizer
 
 from redash import settings
 from redash.stacklet.auth import get_env_db
-from redash.utils import json_dumps, json_loads, get_schema
+from redash.utils import get_schema, json_dumps
 
 
 class RedashSQLAlchemy(SQLAlchemy):
@@ -43,9 +43,7 @@ if settings.SQLALCHEMY_DATABASE_SCHEMA:
 
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
-    engine_options={
-        "execution_options": {"schema_translate_map": {None: get_schema()}}
-    },
+    engine_options={"execution_options": {"schema_translate_map": {None: get_schema()}}},
     metadata=md,
 )
 

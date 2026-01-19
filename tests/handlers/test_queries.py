@@ -83,10 +83,7 @@ class TestQueryResourcePost(BaseTestCase):
         new_ds = self.factory.create_data_source()
         new_query_text = "select 2"
         new_qr = self.factory.create_query_result(
-            data_source=new_ds,
-            query_text=new_query_text,
-            query_hash=gen_query_hash(new_query_text),
-            org=new_ds.org
+            data_source=new_ds, query_text=new_query_text, query_hash=gen_query_hash(new_query_text), org=new_ds.org
         )
         db.session.flush()
 
