@@ -44,5 +44,5 @@ runs:
       if: inputs.install-yarn-deps == 'true'
       shell: bash
       run: |
-        npm install --global --force yarn@$YARN_TOOL_VERSION
+        npm install --verbose --global --force yarn@${{ env.YARN_TOOL_VERSION }}
         yarn cache clean && yarn --frozen-lockfile --network-concurrency 1
