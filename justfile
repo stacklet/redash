@@ -7,28 +7,29 @@ pkg_region := "us-east-1"
 _:
 	@just --list --unsorted
 
-# Install all dependencies
 install: backend-install frontend-install
 
-# Install backend dependencies only
 backend-install:
 	poetry install --with dev
 
-# Install frontend dependencies only
 frontend-install:
 	yarn install --frozen-lockfile
+
+format: backend-format frontend-format
 
 backend-format:
 	poetry run ruff check --fix .
 	poetry run black .
 
-backend-lint:
-	poetry run ruff check .
-	poetry run black --check .
-
 frontend-format:
 	yarn prettier
 	yarn lint:fix
+
+lint: backend-lint frontend-lint
+
+backend-lint:
+	poetry run ruff check .
+	poetry run black --check .
 
 frontend-lint:
 	yarn prettier:check
