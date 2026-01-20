@@ -76,8 +76,11 @@ frontend-e2e-test:
 	echo "Starting Redash server..."
 	yarn cypress start -- --skip-db-seed
 
+	echo "Configuring database search_path for schema support..."
+	docker compose exec postgres psql -U postgres -d postgres -c "ALTER DATABASE postgres SET search_path TO redash,public"
+
 	echo "Seeding database..."
-	docker compose run cypress yarn cypress db-seed
+	docker compose run --rm cypress yarn cypress db-seed
 
 	echo "Running Cypress tests..."
 	yarn cypress run-ci
