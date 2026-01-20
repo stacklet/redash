@@ -14,9 +14,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable != true
-        name: Exit if PR is not mergeable
-        run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
@@ -52,9 +49,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable != true
-        name: Exit if PR is not mergeable
-        run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
@@ -74,9 +68,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable != true
-        name: Exit if PR is not mergeable
-        run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
@@ -94,9 +85,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable != true
-        name: Exit if PR is not mergeable
-        run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
@@ -114,9 +102,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable != true
-        name: Exit if PR is not mergeable
-        run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
