@@ -49,7 +49,7 @@ jobs:
           path: .venv
           key: setup-python-${{ runner.os }}-python-${{ env.PYTHON_TOOL_VERSION }}-poetry-v2-${{ hashFiles('**/poetry.lock') }}
       - run: just install
-      - run: just lint
+      - run: just backend-lint
 
   backend-unit-tests:
     runs-on: ubuntu-22.04
@@ -93,8 +93,8 @@ jobs:
         uses: ./.github/composites/install
         with:
           aws-role: arn:aws:iam::653993915282:role/ci-github-actions
-      - name: Run Lint
-        run: yarn lint:ci
+      - name: Run Frontend Lint
+        run: just frontend-lint
 
   frontend-unit-tests:
     runs-on: ubuntu-22.04

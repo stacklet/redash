@@ -12,13 +12,21 @@ install:
 	poetry install --with dev
 	yarn install --frozen-lockfile
 
-format:
+backend-format:
 	poetry run ruff check --fix .
 	poetry run black .
 
-lint:
+backend-lint:
 	poetry run ruff check .
 	poetry run black --check .
+
+frontend-format:
+	yarn prettier
+	yarn lint:fix
+
+frontend-lint:
+	yarn prettier:check
+	yarn lint
 
 # Run backend tests locally using CI configuration
 backend-test *flags:
