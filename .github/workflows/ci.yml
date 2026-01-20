@@ -17,13 +17,10 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-      - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
+      - name: Install Dependencies
+        uses: ./.github/composites/install
         with:
-          postfix: _TOOL_VERSION
-      - uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
-        with:
-          repo: casey/just
-          version: ${{ env.JUST_TOOL_VERSION }}
+          install-yarn-deps: 'false'
       - name: Install and configure Poetry
         uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
         with:
@@ -52,13 +49,10 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-      - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
+      - name: Install Dependencies
+        uses: ./.github/composites/install
         with:
-          postfix: _TOOL_VERSION
-      - uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
-        with:
-          repo: casey/just
-          version: ${{ env.JUST_TOOL_VERSION }}
+          install-yarn-deps: 'false'
       - name: Run Backend Tests
         run: just backend-test
 

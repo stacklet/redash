@@ -77,9 +77,6 @@ frontend-e2e-test:
 	#!/usr/bin/env bash
 	set -euo pipefail
 
-	echo "Logging in to private npm registry..."
-	just pkg-login
-
 	export COMPOSE_FILE=.ci/compose.cypress.yaml
 	export COMPOSE_PROJECT_NAME=cypress
 	export COMPOSE_DOCKER_CLI_BUILD=1

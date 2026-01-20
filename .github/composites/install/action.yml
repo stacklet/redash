@@ -3,7 +3,7 @@ description: AWS Auth and Install Dependencies
 inputs:
   aws-role:
     description: AWS Credential Access Role
-    required: true
+    required: false
   aws-region:
     description: AWS Region
     default: us-east-1
@@ -24,16 +24,19 @@ runs:
         version: ${{ env.JUST_TOOL_VERSION }}
 
     - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      if: inputs.install-yarn-deps == 'true'
       with:
         node-version: ${{ env.NODEJS_TOOL_VERSION }}
         cache: 'yarn'
 
     - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+      if: inputs.install-yarn-deps == 'true'
       with:
         role-to-assume: ${{ inputs.aws-role }}
         aws-region: ${{ inputs.aws-region }}
 
     - name: Login to AWS CodeArtifact
+      if: inputs.install-yarn-deps == 'true'
       shell: bash
       run: just pkg-login
 
