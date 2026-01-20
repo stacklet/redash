@@ -7,9 +7,15 @@ pkg_region := "us-east-1"
 _:
 	@just --list --unsorted
 
-# Install dependencies
-install:
+# Install all dependencies
+install: backend-install frontend-install
+
+# Install backend dependencies only
+backend-install:
 	poetry install --with dev
+
+# Install frontend dependencies only
+frontend-install:
 	yarn install --frozen-lockfile
 
 backend-format:

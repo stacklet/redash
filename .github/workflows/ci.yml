@@ -14,13 +14,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable == 'false'
+      - if: github.event.pull_request.mergeable != true
         name: Exit if PR is not mergeable
         run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
         with:
@@ -45,7 +43,7 @@ jobs:
         with:
           path: .venv
           key: setup-python-${{ runner.os }}-python-${{ env.PYTHON_TOOL_VERSION }}-poetry-v2-${{ hashFiles('**/poetry.lock') }}
-      - run: just install
+      - run: just backend-install
       - run: just backend-lint
 
   backend-unit-tests:
@@ -54,13 +52,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable == 'false'
+      - if: github.event.pull_request.mergeable != true
         name: Exit if PR is not mergeable
         run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
         with:
@@ -78,13 +74,11 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable == 'false'
+      - if: github.event.pull_request.mergeable != true
         name: Exit if PR is not mergeable
         run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Install Dependencies
         uses: ./.github/composites/install
@@ -100,13 +94,11 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable == 'false'
+      - if: github.event.pull_request.mergeable != true
         name: Exit if PR is not mergeable
         run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Install Dependencies
         uses: ./.github/composites/install
@@ -122,13 +114,11 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - if: github.event.pull_request.mergeable == 'false'
+      - if: github.event.pull_request.mergeable != true
         name: Exit if PR is not mergeable
         run: exit 1
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Install Dependencies
         uses: ./.github/composites/install
