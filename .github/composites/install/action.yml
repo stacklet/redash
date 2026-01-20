@@ -25,7 +25,7 @@ runs:
 
     - uses: actions/setup-node@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
+        node-version: ${{ env.NODEJS_TOOL_VERSION }}
         cache: 'yarn'
 
     - uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
@@ -41,5 +41,5 @@ runs:
       if: inputs.install-yarn-deps == 'true'
       shell: bash
       run: |
-        npm install --global --force yarn@$YARN_VERSION
+        npm install --global --force yarn@$YARN_TOOL_VERSION
         yarn cache clean && yarn --frozen-lockfile --network-concurrency 1

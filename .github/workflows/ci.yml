@@ -8,9 +8,6 @@ on:
       - stacklet/integration
 permissions:
   contents: read
-env:
-  NODE_VERSION: 18
-  YARN_VERSION: 1.22.22
 jobs:
   backend-lint:
     runs-on: ubuntu-22.04
@@ -137,6 +134,5 @@ jobs:
         uses: ./.github/composites/install
         with:
           aws-role: arn:aws:iam::653993915282:role/ci-github-actions
-          install-yarn-deps: 'false'
       - name: Run Frontend E2E Tests
         run: just frontend-e2e-test
