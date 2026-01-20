@@ -20,68 +20,60 @@ jobs:
       - if: github.event.pull_request.mergeable == 'false'
         name: Exit if PR is not mergeable
         run: exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
         with:
-          python-version: '3.8'
-      - run: sudo pip install black==23.1.0 ruff==0.0.287
-      - run: ruff check .
-      - run: black --check .
+          postfix: _TOOL_VERSION
+      - uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: ${{ env.JUST_TOOL_VERSION }}
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
+        with:
+          version: ${{ env.POETRY_TOOL_VERSION }}
+          virtualenvs-in-project: true
+      - name: Set up Python ${{ env.PYTHON_TOOL_VERSION }}
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_TOOL_VERSION }}
+          cache: poetry
+      - name: Cache Poetry dependencies
+        id: cache
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        with:
+          path: .venv
+          key: setup-python-${{ runner.os }}-python-${{ env.PYTHON_TOOL_VERSION }}-poetry-v2-${{ hashFiles('**/poetry.lock') }}
+      - run: just install
+      - run: just lint
 
   backend-unit-tests:
     runs-on: ubuntu-22.04
     needs: backend-lint
     permissions:
       contents: read
-    env:
-      COMPOSE_FILE: .ci/compose.ci.yaml
-      COMPOSE_PROJECT_NAME: redash
-      COMPOSE_DOCKER_CLI_BUILD: 1
-      DOCKER_BUILDKIT: 1
     steps:
       - if: github.event.pull_request.mergeable == 'false'
         name: Exit if PR is not mergeable
         run: exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Build Docker Images
-        run: |
-          set -x
-          docker compose build --build-arg install_groups="main,all_ds,dev" --build-arg skip_frontend_build=true
-          docker compose up -d
-          sleep 10
-      - name: Create Test Database
-        run: docker compose -p redash run --rm postgres psql -h postgres -U postgres -c "create database tests;"
-      - name: List Enabled Query Runners
-        run: docker compose -p redash run --rm redash manage ds list_types
-      - name: Run Tests
-        run: docker compose -p redash run --name tests redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc tests/
-      - name: Copy Test Results
-        run: |
-          mkdir -p /tmp/test-results/unit-tests
-          docker cp tests:/app/coverage.xml ./coverage.xml
-          docker cp tests:/app/junit.xml /tmp/test-results/unit-tests/results.xml
-      # - name: Upload coverage reports to Codecov
-      #   uses: codecov/codecov-action@v3
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      - name: Store Test Results
-        uses: actions/upload-artifact@v4
+      - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
         with:
-          name: backend-test-results
-          path: /tmp/test-results
-      - name: Store Coverage Results
-        uses: actions/upload-artifact@v4
+          postfix: _TOOL_VERSION
+      - uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
         with:
-          name: coverage
-          path: coverage.xml
+          repo: casey/just
+          version: ${{ env.JUST_TOOL_VERSION }}
+      - name: Run Backend Tests
+        run: just backend-test
 
   frontend-lint:
     runs-on: ubuntu-22.04
@@ -92,7 +84,7 @@ jobs:
       - if: github.event.pull_request.mergeable == 'false'
         name: Exit if PR is not mergeable
         run: exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha }}
@@ -103,11 +95,6 @@ jobs:
           aws-role: arn:aws:iam::653993915282:role/ci-github-actions
       - name: Run Lint
         run: yarn lint:ci
-      - name: Store Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-test-results
-          path: /tmp/test-results
 
   frontend-unit-tests:
     runs-on: ubuntu-22.04
@@ -119,7 +106,7 @@ jobs:
       - if: github.event.pull_request.mergeable == 'false'
         name: Exit if PR is not mergeable
         run: exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha }}
@@ -128,11 +115,8 @@ jobs:
         uses: ./.github/composites/install
         with:
           aws-role: arn:aws:iam::653993915282:role/ci-github-actions
-      - name: Run App Tests
-        run: yarn test
-      - name: Run Visualizations Tests
-        run: cd viz-lib && yarn test
-      - run: yarn lint
+      - name: Run Frontend Tests
+        run: just frontend-test
 
   frontend-e2e-tests:
     runs-on: ubuntu-22.04
@@ -140,21 +124,11 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    env:
-      COMPOSE_FILE: .ci/compose.cypress.yaml
-      COMPOSE_PROJECT_NAME: cypress
-      COMPOSE_DOCKER_CLI_BUILD: 1
-      DOCKER_BUILDKIT: 1
-      CYPRESS_INSTALL_BINARY: 0
-      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 1
-      # PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
-      # CYPRESS_PROJECT_ID: ${{ secrets.CYPRESS_PROJECT_ID }}
-      # CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
     steps:
       - if: github.event.pull_request.mergeable == 'false'
         name: Exit if PR is not mergeable
         run: exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.sha }}
@@ -164,25 +138,5 @@ jobs:
         with:
           aws-role: arn:aws:iam::653993915282:role/ci-github-actions
           install-yarn-deps: 'false'
-      - name: Enable Code Coverage Report For Master Branch
-        if: endsWith(github.ref, '/master')
-        run: |
-          echo "CODE_COVERAGE=true" >> "$GITHUB_ENV"
-      - name: Setup Redash Server
-        run: |
-          set -x
-          yarn cypress build
-          yarn cypress start -- --skip-db-seed
-          docker compose run cypress yarn cypress db-seed
-      - name: Execute Cypress Tests
-        run: yarn cypress run-ci
-      - name: "Failure: output container logs to console"
-        if: failure()
-        run: docker compose logs
-      - name: Copy Code Coverage Results
-        run: docker cp cypress:/usr/src/app/coverage ./coverage || true
-      - name: Store Coverage Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage
+      - name: Run Frontend E2E Tests
+        run: just frontend-e2e-test
