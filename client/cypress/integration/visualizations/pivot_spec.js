@@ -47,7 +47,7 @@ describe("Pivot", () => {
 
   it("creates Pivot with controls", function() {
     cy.visit(`queries/${this.queryId}/source`);
-      cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
+    cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
     cy.getByTestId("ExecuteButton").click();
 
     const visualizationName = "Pivot";
@@ -60,7 +60,7 @@ describe("Pivot", () => {
 
   it("creates Pivot without controls", function() {
     cy.visit(`queries/${this.queryId}/source`);
-      cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
+    cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
     cy.getByTestId("ExecuteButton").click();
 
     const visualizationName = "Pivot";
