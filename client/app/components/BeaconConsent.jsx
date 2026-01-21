@@ -22,7 +22,7 @@ function BeaconConsent() {
     setHide(true);
   };
 
-  const confirmConsent = (confirm) => {
+  const confirmConsent = confirm => {
     let message = "🙏 Thank you.";
 
     if (!confirm) {
@@ -47,8 +47,7 @@ function BeaconConsent() {
               <HelpTrigger type="USAGE_DATA_SHARING" />
             </>
           }
-          bordered={false}
-        >
+          bordered={false}>
           <Text>Help Redash improve by automatically sending anonymous usage data:</Text>
           <div className="m-t-5">
             <ul>

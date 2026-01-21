@@ -1,0 +1,71 @@
+// Stacklet design tokens
+@stacklet-orange-600: rgb(255, 89, 0);
+@stacklet-orange-700: rgb(199, 69, 0);
+@neutral-white: rgb(255, 255, 255);
+@transition-duration: 0.15s;
+
+.app-switcher {
+  position: relative;
+  z-index: 1002;
+}
+
+.app-switcher-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 4px 8px;
+  border: 1px solid #424B54; // navy.L20
+  background: #242424; // neutrals.ash
+  color: @neutral-white;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all @transition-duration ease;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: #1C485E; // cobalt.D40
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &.open {
+    background-color: #1C485E; // cobalt.D40
+  }
+
+  .app-switcher-label {
+    white-space: nowrap;
+    color: white;
+  }
+
+  .app-switcher-icon {
+    color: white;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+}
+
+// Portal styles - not nested so they work when rendered via ReactDOM.createPortal
+.app-switcher-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 1100 !important;
+  background: transparent !important;
+}
+
+.app-switcher-dropdown {
+  // Inline styles handle all styling for portal
+}
+
+// Portal styles - dropdown and list use inline styles in the component
+.app-switcher-list {
+  // Inline styles handle all styling for portal
+}
