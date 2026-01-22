@@ -9,6 +9,7 @@ from uuid import uuid4
 import psycopg2
 from psycopg2.extras import Range
 
+from redash import settings
 from redash.query_runner import (
     TYPE_BOOLEAN,
     TYPE_DATE,
@@ -21,7 +22,6 @@ from redash.query_runner import (
     JobTimeoutException,
     register,
 )
-from redash import settings
 from redash.stacklet.auth import inject_iam_auth
 
 logger = logging.getLogger(__name__)

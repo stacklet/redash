@@ -58,15 +58,12 @@ def create_tables():
 
     if is_db_empty():
         if settings.SQLALCHEMY_DATABASE_SCHEMA:
-            from sqlalchemy import DDL
-            from sqlalchemy import event
+            from sqlalchemy import DDL, event
 
             event.listen(
                 db.metadata,
                 "before_create",
-                DDL(
-                    f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"
-                ),
+                DDL(f"CREATE SCHEMA IF NOT EXISTS {settings.SQLALCHEMY_DATABASE_SCHEMA}"),
             )
 
         _wait_for_db_connection(db)

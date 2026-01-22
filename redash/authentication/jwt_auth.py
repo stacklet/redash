@@ -4,15 +4,13 @@ import logging
 import jwt
 import requests
 from jwt.exceptions import (
-    PyJWTError,
+    ExpiredSignatureError,
     ImmatureSignatureError,
     InvalidKeyError,
     InvalidSignatureError,
     InvalidTokenError,
-    ExpiredSignatureError,
+    PyJWTError,
 )
-
-from redash.settings.organization import settings as org_settings
 
 logger = logging.getLogger("jwt_auth")
 
@@ -83,9 +81,7 @@ def find_identity_in_payload(payload):
     return None
 
 
-def verify_jwt_token(
-    jwt_token, expected_issuer, expected_audience, expected_client_id, algorithms, public_certs_url
-):
+def verify_jwt_token(jwt_token, expected_issuer, expected_audience, expected_client_id, algorithms, public_certs_url):
     # https://developers.cloudflare.com/access/setting-up-access/validate-jwt-tokens/
     # https://cloud.google.com/iap/docs/signed-headers-howto
     # Loop through the keys since we can't pass the key set to the decoder
@@ -117,9 +113,7 @@ def verify_jwt_token(
                 raise InvalidTokenError('Token has incorrect "client_id"')
             identity = find_identity_in_payload(payload)
             if not identity:
-                raise InvalidTokenError(
-                    "Unable to determine identity (missing email, username, or other identifier)"
-                )
+                raise InvalidTokenError("Unable to determine identity (missing email, username, or other identifier)")
             valid_token = True
             break
         except (InvalidKeyError, InvalidSignatureError) as e:

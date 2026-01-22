@@ -191,7 +191,7 @@ def jwt_token_load_user_from_request(request):
 
     if not valid_token:
         return None
-    
+
     if payload.get("stacklet:db_role") == "limited_visibility":
         raise Unauthorized("Unable to determine SSO identity")
 
@@ -209,9 +209,7 @@ def jwt_token_load_user_from_request(request):
         except json.JSONDecodeError as e:
             logger.exception("Error parsing stacklet:permissions: %s", e)
         else:
-            user_groups = {group.name
-                           for group in models.Group.all(org)
-                           if group.id in user.group_ids}
+            user_groups = {group.name for group in models.Group.all(org) if group.id in user.group_ids}
             if ["system", "write"] in permissions:
                 user_groups.add("admin")
             else:

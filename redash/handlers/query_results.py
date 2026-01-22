@@ -8,13 +8,18 @@ from flask_login import current_user
 from flask_restful import abort
 
 from redash import models, settings
-from redash.handlers.base import BaseResource, get_object_or_404, record_event, add_cors_headers
+from redash.handlers.base import (
+    BaseResource,
+    add_cors_headers,
+    get_object_or_404,
+    record_event,
+)
 from redash.models.parameterized_query import (
-    dropdown_values,
     DropdownSubqueryError,
     InvalidParameterError,
     ParameterizedQuery,
     QueryDetachedFromDataSourceError,
+    dropdown_values,
 )
 from redash.permissions import (
     has_access,
@@ -226,6 +231,7 @@ class QueryDropdownsResource(BaseResource):
         except (DropdownSubqueryError, InvalidParameterError, QueryDetachedFromDataSourceError) as e:
             logger.exception(e)
             abort(400, message=str(e))
+
 
 class QueryResultResource(BaseResource):
     @staticmethod

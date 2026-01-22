@@ -20,6 +20,7 @@
     "lint:base": "eslint --config ./client/.eslintrc.js --ignore-path ./client/.eslintignore",
     "lint:ci": "yarn lint --max-warnings 0 --format junit --output-file /tmp/test-results/eslint/results.xml",
     "prettier": "prettier --write 'client/app/**/*.{js,jsx,ts,tsx}' 'client/cypress/**/*.{js,jsx,ts,tsx}'",
+    "prettier:check": "prettier --check 'client/app/**/*.{js,jsx,ts,tsx}' 'client/cypress/**/*.{js,jsx,ts,tsx}'",
     "type-check": "tsc --noEmit --project client/tsconfig.json",
     "type-check:watch": "yarn type-check --watch",
     "jest": "TZ=Africa/Khartoum jest",

@@ -50,7 +50,11 @@ def _load_result(query_id, org, user, run_if_not_cached, query_stack=None):
     if not query_result:
         if not run_if_not_cached:
             raise DropdownSubqueryError(query.id, db_role, "cached results not found")
-        logger.info("Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(query.id, db_role))
+        logger.info(
+            "Dropdown values not found for query id {} and db_role {}, running on-demand query to populate cache".format(
+                query.id, db_role
+            )
+        )
         query_text = query.query_text
         if query.options:
             parameters = {p["name"]: p.get("value") for p in query.parameters}
@@ -177,7 +181,9 @@ class ParameterizedQuery:
         self.parameters = {}
 
     def apply(self, parameters, user, query_stack=None):
-        invalid_parameter_names = [key for (key, value) in parameters.items() if not self._valid(key, value, user, query_stack)]
+        invalid_parameter_names = [
+            key for (key, value) in parameters.items() if not self._valid(key, value, user, query_stack)
+        ]
         if invalid_parameter_names:
             raise InvalidParameterError(invalid_parameter_names)
         else:
@@ -264,6 +270,7 @@ class QueryDetachedFromDataSourceError(Exception):
             "This query is detached from any data source. Please select a different query."
         )
 
+
 class DropdownSubqueryError(Exception):
     def __init__(self, query_id, db_role, error):
         self.query_id = query_id
@@ -272,6 +279,7 @@ class DropdownSubqueryError(Exception):
         super(DropdownSubqueryError, self).__init__(
             "Error loading dropdown values for query id {} and db_role {}: {}".format(query_id, db_role, error)
         )
+
 
 class ParameterizedQueryCycleError(DropdownSubqueryError):
     def __init__(self, query_id, db_role, query_stack):

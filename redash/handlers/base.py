@@ -24,9 +24,7 @@ def add_cors_headers(headers):
 
         if set(["*", origin]) & settings.ACCESS_CONTROL_ALLOW_ORIGIN:
             headers["Access-Control-Allow-Origin"] = origin
-            headers["Access-Control-Allow-Credentials"] = str(
-                settings.ACCESS_CONTROL_ALLOW_CREDENTIALS
-            ).lower()
+            headers["Access-Control-Allow-Credentials"] = str(settings.ACCESS_CONTROL_ALLOW_CREDENTIALS).lower()
 
 
 class BaseResource(Resource):

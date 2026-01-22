@@ -101,10 +101,7 @@ def schedule_periodic_jobs(jobs):
 
     jobs_to_schedule = [job for job in job_definitions if job_id(job) not in rq_scheduler]
 
-    logger.info("Current jobs: %s", ", ".join([
-        job.func_name.rsplit('.', 1)[-1]
-        for job in rq_scheduler.get_jobs()
-    ]))
+    logger.info("Current jobs: %s", ", ".join([job.func_name.rsplit(".", 1)[-1] for job in rq_scheduler.get_jobs()]))
 
     for job in jobs_to_clean_up:
         logger.info("Removing %s (%s) from schedule.", job.id, job.func_name)
@@ -125,11 +122,7 @@ def schedule_periodic_jobs(jobs):
 
 def check_periodic_jobs():
     job_definitions = [prep(job) for job in periodic_job_definitions()]
-    missing_jobs = [
-        job["func"].__name__
-        for job in job_definitions
-        if job_id(job) not in rq_scheduler
-    ]
+    missing_jobs = [job["func"].__name__ for job in job_definitions if job_id(job) not in rq_scheduler]
     if not job_definitions:
         logger.warn("No periodic jobs defined")
     if missing_jobs:

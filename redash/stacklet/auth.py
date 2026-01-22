@@ -1,17 +1,13 @@
 import functools
-from urllib.parse import urlparse
 import json
 import os
+from urllib.parse import urlparse
+
 import boto3
 import sqlalchemy
 
-
-ASSETDB_AWS_RDS_CA_BUNDLE = os.environ.get(
-    "ASSETDB_AWS_RDS_CA_BUNDLE", "/app/rds-combined-ca-bundle.pem"
-)
-REDASH_DASHBOARD_JSON_PATH = os.environ.get(
-    "REDASH_DASHBOARD_JSON_PATH", "/app/redash.json"
-)
+ASSETDB_AWS_RDS_CA_BUNDLE = os.environ.get("ASSETDB_AWS_RDS_CA_BUNDLE", "/app/rds-combined-ca-bundle.pem")
+REDASH_DASHBOARD_JSON_PATH = os.environ.get("REDASH_DASHBOARD_JSON_PATH", "/app/redash.json")
 
 
 def get_iam_token(username, hostname, port):

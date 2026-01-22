@@ -5,7 +5,7 @@ from werkzeug.utils import safe_join
 from redash import settings
 from redash.handlers import routes
 from redash.handlers.authentication import base_href
-from redash.handlers.base import org_scoped_rule, add_cors_headers
+from redash.handlers.base import add_cors_headers, org_scoped_rule
 from redash.security import csp_allows_embeding
 
 

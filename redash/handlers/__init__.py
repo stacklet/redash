@@ -1,9 +1,10 @@
 import os
+
 from flask import jsonify
 from flask_login import login_required
 
 from redash.handlers.api import api
-from redash.handlers.base import routes, add_cors_headers
+from redash.handlers.base import add_cors_headers, routes
 from redash.monitor import get_status
 from redash.permissions import require_super_admin
 from redash.security import talisman
@@ -40,9 +41,7 @@ def init_app(app):
 
     @app.after_request
     def add_header(response):
-        ACCESS_CONTROL_ALLOW_ORIGIN = set_from_string(
-            os.environ.get("REDASH_CORS_ACCESS_CONTROL_ALLOW_ORIGIN", "")
-        )
+        ACCESS_CONTROL_ALLOW_ORIGIN = set_from_string(os.environ.get("REDASH_CORS_ACCESS_CONTROL_ALLOW_ORIGIN", ""))
         if len(ACCESS_CONTROL_ALLOW_ORIGIN) > 0:
             add_cors_headers(response.headers)
         return response
