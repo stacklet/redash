@@ -22,8 +22,9 @@ class RedashSQLAlchemy(SQLAlchemy):
     def create_engine(self, sa_url, engine_opts):
         if sa_url.drivername.startswith("postgres"):
             engine = get_env_db()
-            return engine
-        super(RedashSQLAlchemy, self).create_engine(sa_url, engine_opts)
+            if engine is not None:
+                return engine
+        return super(RedashSQLAlchemy, self).create_engine(sa_url, engine_opts)
 
     def apply_pool_defaults(self, app, options):
         super(RedashSQLAlchemy, self).apply_pool_defaults(app, options)

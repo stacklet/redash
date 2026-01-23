@@ -81,6 +81,7 @@ class QueryResultTest(BaseTestCase):
             {},
             0,
             utcnow(),
+            None,
         )
 
         self.assertEqual(original_updated_at, query.updated_at)

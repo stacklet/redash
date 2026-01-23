@@ -22,25 +22,25 @@ class TestParameterizedQuery(TestCase):
         self.assertEqual(set(["param", "table"]), query.missing_params)
 
     def test_finds_all_params(self):
-        query = ParameterizedQuery("SELECT {{param}} FROM {{table}}").apply({"param": "value", "table": "value"})
+        query = ParameterizedQuery("SELECT {{param}} FROM {{table}}").apply({"param": "value", "table": "value"}, None)
         self.assertEqual(set([]), query.missing_params)
 
     def test_deduplicates_params(self):
         query = ParameterizedQuery("SELECT {{param}}, {{param}} FROM {{table}}").apply(
-            {"param": "value", "table": "value"}
+            {"param": "value", "table": "value"}, None
         )
         self.assertEqual(set([]), query.missing_params)
 
     def test_handles_nested_params(self):
         query = ParameterizedQuery(
             "SELECT {{param}}, {{param}} FROM {{table}} -- {{#test}} {{nested_param}} {{/test}}"
-        ).apply({"param": "value", "table": "value"})
+        ).apply({"param": "value", "table": "value"}, None)
         self.assertEqual(set(["test", "nested_param"]), query.missing_params)
 
     def test_handles_objects(self):
         query = ParameterizedQuery(
             "SELECT * FROM USERS WHERE created_at between '{{ created_at.start }}' and '{{ created_at.end }}'"
-        ).apply({"created_at": {"start": 1, "end": 2}})
+        ).apply({"created_at": {"start": 1, "end": 2}}, None)
         self.assertEqual(set([]), query.missing_params)
 
     def test_raises_on_parameters_not_in_schema(self):
@@ -48,14 +48,14 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"qux": 7})
+            query.apply({"qux": 7}, None)
 
     def test_raises_on_invalid_text_parameters(self):
         schema = [{"name": "bar", "type": "text"}]
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": 7})
+            query.apply({"bar": 7}, None)
 
     @patch("redash.models.parameterized_query._is_number", side_effect=ArithmeticError)
     def test_raises_on_unexpected_validation_error(self, _):
@@ -63,13 +63,13 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": 5})
+            query.apply({"bar": 5}, None)
 
     def test_validates_text_parameters(self):
         schema = [{"name": "bar", "type": "text"}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "baz"})
+        query.apply({"bar": "baz"}, None)
 
         self.assertEqual("foo baz", query.text)
 
@@ -77,7 +77,7 @@ class TestParameterizedQuery(TestCase):
         schema = [{"name": "bar", "type": "text-pattern", "regex": "a+"}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "a"})
+        query.apply({"bar": "a"}, None)
 
         self.assertEqual("foo a", query.text)
 
@@ -86,20 +86,20 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo {{bar}}", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "b"})
+            query.apply({"bar": "b"}, None)
 
     def test_raises_on_invalid_number_parameters(self):
         schema = [{"name": "bar", "type": "number"}]
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "baz"})
+            query.apply({"bar": "baz"}, None)
 
     def test_validates_number_parameters(self):
         schema = [{"name": "bar", "type": "number"}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": 7})
+        query.apply({"bar": 7}, None)
 
         self.assertEqual("foo 7", query.text)
 
@@ -107,7 +107,7 @@ class TestParameterizedQuery(TestCase):
         schema = [{"name": "bar", "type": "number"}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "3.14"})
+        query.apply({"bar": "3.14"}, None)
 
         self.assertEqual("foo 3.14", query.text)
 
@@ -116,20 +116,20 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "baz"})
+            query.apply({"bar": "baz"}, None)
 
     def test_raises_on_none_for_date_parameters(self):
         schema = [{"name": "bar", "type": "date"}]
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": None})
+            query.apply({"bar": None}, None)
 
     def test_validates_date_parameters(self):
         schema = [{"name": "bar", "type": "date"}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "2000-01-01 12:00:00"})
+        query.apply({"bar": "2000-01-01 12:00:00"}, None)
 
         self.assertEqual("foo 2000-01-01 12:00:00", query.text)
 
@@ -138,14 +138,14 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": 7})
+            query.apply({"bar": 7}, None)
 
     def test_raises_on_unlisted_enum_value_parameters(self):
         schema = [{"name": "bar", "type": "enum", "enumOptions": ["baz", "qux"]}]
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "shlomo"})
+            query.apply({"bar": "shlomo"}, None)
 
     def test_raises_on_unlisted_enum_list_value_parameters(self):
         schema = [
@@ -159,13 +159,13 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": ["shlomo", "baz"]})
+            query.apply({"bar": ["shlomo", "baz"]}, None)
 
     def test_validates_enum_parameters(self):
         schema = [{"name": "bar", "type": "enum", "enumOptions": ["baz", "qux"]}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "baz"})
+        query.apply({"bar": "baz"}, None)
 
         self.assertEqual("foo baz", query.text)
 
@@ -180,7 +180,7 @@ class TestParameterizedQuery(TestCase):
         ]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": ["qux", "baz"]})
+        query.apply({"bar": ["qux", "baz"]}, None)
 
         self.assertEqual("foo 'qux','baz'", query.text)
 
@@ -192,7 +192,7 @@ class TestParameterizedQuery(TestCase):
         schema = [{"name": "bar", "type": "query", "queryId": 1}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": 1})
+        query.apply({"bar": 1}, None)
 
         self.assertEqual("foo 1", query.text)
 
@@ -202,7 +202,7 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": 7})
+            query.apply({"bar": 7}, None)
 
     @patch(
         "redash.models.parameterized_query.dropdown_values",
@@ -213,7 +213,7 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "shlomo"})
+            query.apply({"bar": "shlomo"}, None)
 
     @patch(
         "redash.models.parameterized_query.dropdown_values",
@@ -223,7 +223,7 @@ class TestParameterizedQuery(TestCase):
         schema = [{"name": "bar", "type": "query", "queryId": 1}]
         query = ParameterizedQuery("foo {{bar}}", schema)
 
-        query.apply({"bar": "baz"})
+        query.apply({"bar": "baz"}, None)
 
         self.assertEqual("foo baz", query.text)
 
@@ -232,13 +232,13 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "baz"})
+            query.apply({"bar": "baz"}, None)
 
     def test_validates_date_range_parameters(self):
         schema = [{"name": "bar", "type": "date-range"}]
         query = ParameterizedQuery("foo {{bar.start}} {{bar.end}}", schema)
 
-        query.apply({"bar": {"start": "2000-01-01 12:00:00", "end": "2000-12-31 12:00:00"}})
+        query.apply({"bar": {"start": "2000-01-01 12:00:00", "end": "2000-12-31 12:00:00"}}, None)
 
         self.assertEqual("foo 2000-01-01 12:00:00 2000-12-31 12:00:00", query.text)
 
@@ -247,7 +247,7 @@ class TestParameterizedQuery(TestCase):
         query = ParameterizedQuery("foo", schema)
 
         with pytest.raises(InvalidParameterError):
-            query.apply({"bar": "baz"})
+            query.apply({"bar": "baz"}, None)
 
     def test_is_not_safe_if_expecting_text_parameter(self):
         schema = [{"name": "bar", "type": "text"}]
@@ -275,7 +275,7 @@ class TestParameterizedQuery(TestCase):
         },
     )
     def test_dropdown_values_prefers_name_and_value_columns(self, _):
-        values = dropdown_values(1, None)
+        values = dropdown_values(1, None, None)
         self.assertEqual(values, [{"name": "John", "value": "John Doe"}])
 
     @patch(
@@ -286,7 +286,7 @@ class TestParameterizedQuery(TestCase):
         },
     )
     def test_dropdown_values_compromises_for_first_column(self, _):
-        values = dropdown_values(1, None)
+        values = dropdown_values(1, None, None)
         self.assertEqual(values, [{"name": 5, "value": "5"}])
 
     @patch(
@@ -297,7 +297,7 @@ class TestParameterizedQuery(TestCase):
         },
     )
     def test_dropdown_supports_upper_cased_columns(self, _):
-        values = dropdown_values(1, None)
+        values = dropdown_values(1, None, None)
         self.assertEqual(values, [{"name": 5, "value": "5"}])
 
     @patch(
@@ -306,4 +306,4 @@ class TestParameterizedQuery(TestCase):
     )
     def test_dropdown_values_raises_when_query_is_detached_from_data_source(self, _):
         with pytest.raises(QueryDetachedFromDataSourceError):
-            dropdown_values(1, None)
+            dropdown_values(1, None, None)
