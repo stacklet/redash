@@ -1,3 +1,4 @@
+import functools
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import boto3
 logger = logging.getLogger(__name__)
 
 
+@functools.cache
 def get_application_config():
     """Fetches application config from SSM Parameter Store.
 
