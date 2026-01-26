@@ -32,6 +32,7 @@ def init_app(app):
         organization,
         queries,
         setup,
+        stacklet,
         static,
     )
 
