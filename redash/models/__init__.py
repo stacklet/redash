@@ -763,10 +763,14 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
 
     @classmethod
     def all_groups_for_query_ids(cls, query_ids):
-        query = """SELECT group_id, view_only
-                   FROM queries
-                   JOIN data_source_groups ON queries.data_source_id = data_source_groups.data_source_id
-                   WHERE queries.id in :ids"""
+        from redash.utils import get_schema
+
+        schema = get_schema()
+        schema_prefix = f"{schema}." if schema else ""
+        query = f"""SELECT group_id, view_only
+                   FROM {schema_prefix}queries
+                   JOIN {schema_prefix}data_source_groups ON {schema_prefix}queries.data_source_id = {schema_prefix}data_source_groups.data_source_id
+                   WHERE {schema_prefix}queries.id in :ids"""
 
         return db.session.execute(query, {"ids": tuple(query_ids)}).fetchall()
 

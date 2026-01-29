@@ -1,0 +1,48 @@
+name: Install Dependencies
+description: AWS Auth and Install Dependencies
+inputs:
+  aws-role:
+    description: AWS Credential Access Role
+    required: false
+  aws-region:
+    description: AWS Region
+    default: us-east-1
+  install-yarn-deps:
+    description: Whether to install yarn dependencies
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - uses: wistia/parse-tool-versions@32f568a4ffd4bfa7720ebf93f171597d1ebc979a # v2.1.1
+      with:
+        postfix: _TOOL_VERSION
+
+    - uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+      with:
+        repo: casey/just
+        version: ${{ env.JUST_TOOL_VERSION }}
+
+    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      if: inputs.install-yarn-deps == 'true'
+      with:
+        node-version: ${{ env.NODEJS_TOOL_VERSION }}
+        cache: 'yarn'
+
+    - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+      if: inputs.install-yarn-deps == 'true'
+      with:
+        role-to-assume: ${{ inputs.aws-role }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Login to AWS CodeArtifact
+      if: inputs.install-yarn-deps == 'true'
+      shell: bash
+      run: just pkg-login
+
+    - name: Install Dependencies
+      if: inputs.install-yarn-deps == 'true'
+      shell: bash
+      run: |
+        npm install --verbose --global --force yarn@${YARN_TOOL_VERSION}
+        yarn cache clean && yarn --frozen-lockfile --network-concurrency 1

@@ -482,6 +482,7 @@ class TestQueryUpdateLatestResult(BaseTestCase):
             self.data,
             self.runtime,
             self.utcnow,
+            None,
         )
 
         Query.update_latest_result(query_result)
@@ -503,6 +504,7 @@ class TestQueryUpdateLatestResult(BaseTestCase):
             self.data,
             self.runtime,
             self.utcnow,
+            None,
         )
 
         Query.update_latest_result(query_result)
@@ -524,6 +526,7 @@ class TestQueryUpdateLatestResult(BaseTestCase):
             self.data,
             self.runtime,
             self.utcnow,
+            None,
         )
 
         Query.update_latest_result(query_result)
