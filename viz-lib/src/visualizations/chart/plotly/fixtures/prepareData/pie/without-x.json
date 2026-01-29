@@ -34,14 +34,14 @@
         "type": "pie",
         "hole": 0.4,
         "marker": {
-          "colors": ["#356AFF"]
+          "colors": ["#70ACC3"]
         },
         "hoverinfo": "text+label",
         "hover": [],
         "text": ["100% (200)"],
         "textinfo": "percent",
         "textposition": "inside",
-        "textfont": { "color": ["#ffffff"] },
+        "textfont": { "color": ["#333333"] },
         "name": "a",
         "direction": "counterclockwise",
         "domain": { "x": [0, 0.98], "y": [0, 0.9] },

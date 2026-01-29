@@ -38,14 +38,14 @@
         "type": "pie",
         "hole": 0.4,
         "marker": {
-          "colors": ["#356AFF", "#E92828", "#3BD973", "#604FE9"]
+          "colors": ["#70ACC3", "#212B36", "#38A169", "#1177BB"]
         },
         "hoverinfo": "text+label",
         "hover": [],
         "text": ["5% (10)", "30% (60)", "50% (100)", "15% (30)"],
         "textinfo": "none",
         "textposition": "inside",
-        "textfont": { "color": ["#ffffff", "#ffffff", "#333333", "#ffffff"] },
+        "textfont": { "color": ["#333333", "#ffffff", "#333333", "#ffffff"] },
         "name": "a",
         "direction": "counterclockwise",
         "domain": { "x": [0, 0.98], "y": [0, 0.9] },
