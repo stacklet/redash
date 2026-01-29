@@ -48,8 +48,8 @@ function buildServer() {
 
 function startServer() {
   console.log("Starting the server...");
-  execSync("docker compose -p cypress up -d", { stdio: "inherit" });
-  execSync("docker compose -p cypress run server create_db", { stdio: "inherit" });
+  execSync("docker compose -p cypress up -d server worker scheduler", { stdio: "inherit" });
+  execSync("docker compose -p cypress run --rm server create_db", { stdio: "inherit" });
 }
 
 function stopServer() {
@@ -68,7 +68,7 @@ function runCypressCI() {
   }
 
   execSync(
-    "COMMIT_INFO_MESSAGE=$(git show -s --format=%s) docker compose run --name cypress cypress ./node_modules/.bin/percy exec -t 300 -- ./node_modules/.bin/cypress run $CYPRESS_OPTIONS",
+    "COMMIT_INFO_MESSAGE=$(git show -s --format=%s) docker compose run --rm --name cypress cypress ./node_modules/.bin/percy exec -t 300 -- ./node_modules/.bin/cypress run $CYPRESS_OPTIONS",
     { stdio: "inherit" }
   );
 }
