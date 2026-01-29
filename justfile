@@ -54,7 +54,9 @@ frontend-test:
 	@echo "✓ All frontend tests passed!"
 
 # Run frontend e2e tests
-frontend-e2e-test:
+# ⚠️ these are big and slow and can easily take over 10 minutes to run on a modern laptop and ~45
+#    minutes in Github CI.
+e2e-test:
 	#!/usr/bin/env bash
 	set -euo pipefail
 

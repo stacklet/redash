@@ -1,0 +1,85 @@
+name: "E2E Tests - Redash"
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+    inputs: {}
+
+permissions:
+  id-token: write # Require write permission to Fetch an OIDC token.
+
+jobs:
+  redash-e2e-tests:
+    runs-on: ubuntu-22.04
+    environment: test
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Notify slack starting
+        id: e2e # IMPORTANT: reference this step ID value in future Slack steps
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.CI_SLACK_TOKEN }}
+          payload: |
+            channel: "C01HE4GGZ7A"
+            text: "Redash E2E Tests - RUNNING"
+            attachments:
+              - color: "#FFA500"
+                blocks:
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: "⏳ *Redash* E2E Tests - *RUNNING* ⏳"
+                  - type: "divider"
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: ${{ toJSON(github.ref_name == 'main' && 'Branch: main' || format('Branch: ⚠️  {0}', github.ref_name)) }}
+                  - type: "divider"
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Test Logs>"
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Dependencies
+        uses: ./.github/composites/install
+        with:
+          aws-role: arn:aws:iam::653993915282:role/ci-github-actions
+
+      - name: Run E2E Tests
+        run: just e2e-test
+
+      - name: Notify slack result
+        if: always()
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.update
+          token: ${{ secrets.CI_SLACK_TOKEN }}
+          payload: |
+            channel: "C01HE4GGZ7A"
+            ts: "${{ steps.e2e.outputs.ts }}"
+            text: "Redash E2E Tests - ${{ job.status == 'success' && 'SUCCEEDED' || 'FAILED' }}"
+            attachments:
+              - color: "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}"
+                blocks:
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: "${{ job.status == 'success' && '✅ *Redash* E2E Tests - *SUCCEEDED* ✅' || '❌ *Redash* E2E Tests - *FAILED* ❌' }}"
+                  - type: "divider"
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: ${{ toJSON(github.ref_name == 'main' && 'Branch: main' || format('Branch: ⚠️  {0}', github.ref_name)) }}
+                  - type: "divider"
+                  - type: "section"
+                    text:
+                      type: "mrkdwn"
+                      text: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Test Logs>"
