@@ -1,6 +1,9 @@
 import moment from "moment";
 import { isFunction } from "lodash";
 
+// Import fonts
+import "@fontsource-variable/dm-sans";
+
 // Ensure that this image will be available in assets folder
 import "@/assets/images/avatar.svg";
 

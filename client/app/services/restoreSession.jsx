@@ -1,4 +1,3 @@
-import { map } from "lodash";
 import React from "react";
 import Modal from "antd/lib/modal";
 import { Auth } from "@/services/auth";
@@ -9,20 +8,6 @@ export function notifySessionRestored() {
   if (window.opener) {
     window.opener.postMessage({ type: SESSION_RESTORED_MESSAGE }, window.location.origin);
   }
-}
-
-function getPopupPosition(width, height) {
-  const windowLeft = window.screenX;
-  const windowTop = window.screenY;
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-
-  return {
-    left: Math.floor((windowWidth - width) / 2 + windowLeft),
-    top: Math.floor((windowHeight - height) / 2 + windowTop),
-    width: Math.floor(width),
-    height: Math.floor(height),
-  };
 }
 
 function showRestoreSessionPrompt(loginUrl, onSuccess) {
@@ -44,16 +29,6 @@ function showRestoreSessionPrompt(loginUrl, onSuccess) {
         popup.focus();
         return; // popup already shown
       }
-
-      const popupOptions = {
-        ...getPopupPosition(640, 640),
-        menubar: "no",
-        toolbar: "no",
-        location: "yes",
-        resizable: "yes",
-        scrollbars: "yes",
-        status: "yes",
-      };
 
       // Popup auth doesn't work with Stacklet login.
       window.location.href = loginUrl;

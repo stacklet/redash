@@ -1,7 +1,7 @@
 import React, { useRef, useCallback } from "react";
 import PropTypes from "prop-types";
 import DynamicComponent from "@/components/DynamicComponent";
-import DesktopNavbar from "./DesktopNavbar";
+import StackletSidebar from "./StackletSidebar";
 import MobileNavbar from "./MobileNavbar";
 
 import "./index.less";
@@ -16,7 +16,7 @@ export default function ApplicationLayout({ children }) {
       <DynamicComponent name="ApplicationWrapper">
         <div className="application-layout-side-menu">
           <DynamicComponent name="ApplicationDesktopNavbar">
-            <DesktopNavbar />
+            <StackletSidebar />
           </DynamicComponent>
         </div>
         <div className="application-layout-content">
