@@ -1,6 +1,7 @@
 import functools
 
-from flask_sqlalchemy import BaseQuery, SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy.query import Query
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import MetaData
 from sqlalchemy.orm import object_session
@@ -19,12 +20,13 @@ class RedashSQLAlchemy(SQLAlchemy):
             options.update(pool_pre_ping=True)
         return super(RedashSQLAlchemy, self).apply_driver_hacks(app, info, options)
 
-    def create_engine(self, sa_url, engine_opts):
-        if sa_url.drivername.startswith("postgres"):
-            engine = get_env_db()
-            if engine is not None:
-                return engine
-        return super(RedashSQLAlchemy, self).create_engine(sa_url, engine_opts)
+    def _make_engine(self, bind_key, options, app):
+        # Stacklet customization: Override engine creation to use custom connection logic
+        # See redash.stacklet.auth.get_env_db() for implementation details
+        engine = get_env_db()
+        if engine is not None:
+            return engine
+        return super(RedashSQLAlchemy, self)._make_engine(bind_key, options, app)
 
     def apply_pool_defaults(self, app, options):
         super(RedashSQLAlchemy, self).apply_pool_defaults(app, options)
@@ -41,12 +43,20 @@ md = None
 if settings.SQLALCHEMY_DATABASE_SCHEMA:
     md = MetaData(schema=settings.SQLALCHEMY_DATABASE_SCHEMA)
 
+
+class SearchBaseQuery(Query, SearchQueryMixin):
+    """
+    The SQA query class to use when full text search is wanted.
+    """
+
+
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
     engine_options={
         "execution_options": {"schema_translate_map": {None: get_schema()}}
     },
     metadata=md,
+    query_class=SearchBaseQuery,
 )
 
 # Make sure the SQLAlchemy mappers are all properly configured first.
@@ -57,12 +67,6 @@ db.configure_mappers()
 # listen to a few database events to set up functions, trigger updates
 # and indexes for the full text search
 make_searchable(db.metadata, options={"regconfig": "pg_catalog.simple"})
-
-
-class SearchBaseQuery(BaseQuery, SearchQueryMixin):
-    """
-    The SQA query class to use when full text search is wanted.
-    """
 
 
 @vectorizer(db.Integer)

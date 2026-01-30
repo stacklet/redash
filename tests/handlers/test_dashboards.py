@@ -139,6 +139,7 @@ class TestDashboardResourcePost(BaseTestCase):
         self.assertEqual(rv.status_code, 403)
 
         AccessPermission.grant(obj=d, access_type=ACCESS_TYPE_MODIFY, grantee=user, grantor=d.user)
+        db.session.commit()
 
         rv = self.make_request(
             "post",
@@ -186,7 +187,9 @@ class TestDashboardShareResourcePost(BaseTestCase):
         res = self.make_request("post", "/api/dashboards/{}/share".format(dashboard.id), user=user)
         self.assertEqual(res.status_code, 403)
 
+        self.db.session.add(user)
         user.group_ids.append(self.factory.org.admin_group.id)
+        self.db.session.commit()
 
         res = self.make_request("post", "/api/dashboards/{}/share".format(dashboard.id), user=user)
         self.assertEqual(res.status_code, 200)
@@ -196,6 +199,7 @@ class TestDashboardShareResourceDelete(BaseTestCase):
     def test_disables_api_key(self):
         dashboard = self.factory.create_dashboard()
         ApiKey.create_for_object(dashboard, self.factory.user)
+        self.db.session.commit()
 
         res = self.make_request("delete", "/api/dashboards/{}/share".format(dashboard.id))
         self.assertEqual(res.status_code, 200)
@@ -214,7 +218,9 @@ class TestDashboardShareResourceDelete(BaseTestCase):
         res = self.make_request("delete", "/api/dashboards/{}/share".format(dashboard.id), user=user)
         self.assertEqual(res.status_code, 403)
 
+        self.db.session.add(user)
         user.group_ids.append(self.factory.org.admin_group.id)
+        self.db.session.commit()
 
         res = self.make_request("delete", "/api/dashboards/{}/share".format(dashboard.id), user=user)
         self.assertEqual(res.status_code, 200)

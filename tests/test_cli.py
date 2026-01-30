@@ -1,9 +1,14 @@
 import textwrap
 
 import mock
+import sqlalchemy
 from click.testing import CliRunner
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.sql import text
 
+from redash import settings
 from redash.cli import manager
+from redash.cli.database import _wait_for_db_connection, is_db_empty, load_extensions
 from redash.models import DataSource, Group, Organization, User, db
 from redash.query_runner import query_runners
 from redash.utils.configuration import ConfigurationContainer
@@ -253,7 +258,7 @@ class GroupCommandTests(BaseTestCase):
 
     def test_change_permissions(self):
         g = self.factory.create_group(permissions=["list_dashboards"])
-        db.session.flush()
+        db.session.commit()
         g_id = g.id
         perms = ["create_query", "edit_query", "view_query"]
         runner = CliRunner()
@@ -338,11 +343,12 @@ class OrganizationCommandTests(BaseTestCase):
         self.assertEqual(self.factory.org.google_apps_domains, domains)
 
     def test_show_google_apps_domains(self):
+        # Re-add org to session since it may have been detached
+        db.session.add(self.factory.org)
         self.factory.org.settings[Organization.SETTING_GOOGLE_APPS_DOMAINS] = [
             "example.org",
             "example.com",
         ]
-        db.session.add(self.factory.org)
         db.session.commit()
         runner = CliRunner()
         result = runner.invoke(manager, ["org", "show_google_apps_domains"])
@@ -566,3 +572,100 @@ class UserCommandTests(BaseTestCase):
         self.assertEqual(result.exit_code, 0)
         db.session.add(u)
         self.assertEqual(u.group_ids, [u.org.default_group.id, u.org.admin_group.id])
+
+
+class DatabaseCommandTests(BaseTestCase):
+    def test_wait_for_db_connection_success(self):
+        """Test that _wait_for_db_connection succeeds when connection is available."""
+        # This should work since we have a test database
+        _wait_for_db_connection(db)
+        # If we get here without exception, the test passed
+
+    def test_wait_for_db_connection_with_success(self):
+        """Test that _wait_for_db_connection succeeds without sleeping on first try."""
+        # Mock time.sleep to verify it's not called on success
+        with mock.patch("time.sleep") as mock_sleep:
+            _wait_for_db_connection(db)
+            # Sleep should not be called on success
+            mock_sleep.assert_not_called()
+
+    def test_wait_for_db_connection_sleeps_on_failure(self):
+        """Test that _wait_for_db_connection sleeps when connection fails."""
+        call_count = [0]
+
+        def mock_connect():
+            call_count[0] += 1
+            raise DatabaseError("Connection failed", None, None)
+
+        # Mock time.sleep to avoid waiting 30 seconds in test
+        with mock.patch("time.sleep") as mock_sleep:
+            with mock.patch.object(db.engine, "connect", side_effect=mock_connect):
+                _wait_for_db_connection(db)
+                # Function attempts connection once, then gives up
+                self.assertEqual(call_count[0], 1)
+                # Should have slept once for 30 seconds
+                mock_sleep.assert_called_once_with(30)
+
+    def test_is_db_empty_with_tables(self):
+        """Test that is_db_empty returns False when tables exist."""
+        # The test database should have tables created
+        result = is_db_empty()
+        self.assertFalse(result)
+
+    def test_is_db_empty_without_tables(self):
+        """Test that is_db_empty returns True when no tables exist."""
+        # Mock the inspector to return no tables
+        with mock.patch("sqlalchemy.inspect") as mock_inspect:
+            mock_inspector = mock.MagicMock()
+            mock_inspector.get_table_names.return_value = []
+            mock_inspect.return_value = mock_inspector
+
+            result = is_db_empty()
+            self.assertTrue(result)
+
+    def test_load_extensions(self):
+        """Test that load_extensions executes CREATE EXTENSION commands."""
+        # Mock the settings to include test extensions
+        test_extensions = ["pg_trgm", "hstore"]
+        with mock.patch.object(settings.dynamic_settings, "database_extensions", test_extensions):
+            # Mock the connection execute to track calls
+            with mock.patch.object(db.engine, "connect") as mock_connect:
+                mock_conn = mock.MagicMock()
+                mock_connect.return_value.__enter__.return_value = mock_conn
+
+                load_extensions(db)
+
+                # Verify that execute was called for each extension
+                self.assertEqual(mock_conn.execute.call_count, len(test_extensions))
+
+    def test_create_tables_command_with_existing_tables(self):
+        """Test the create_tables CLI command when tables already exist."""
+        runner = CliRunner()
+
+        # Mock is_db_empty to return False so we upgrade instead
+        with mock.patch("redash.cli.database.is_db_empty", return_value=False):
+            with mock.patch("redash.cli.database.upgrade") as mock_upgrade:
+                result = runner.invoke(manager, ["database", "create_tables"])
+
+                self.assertEqual(result.exit_code, 0)
+                mock_upgrade.assert_called_once()
+                self.assertIn("existing redash tables detected", result.output)
+
+    def test_drop_tables_command(self):
+        """Test the drop_tables CLI command."""
+        runner = CliRunner()
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db, "drop_all") as mock_drop_all:
+                result = runner.invoke(manager, ["database", "drop_tables"])
+
+                self.assertEqual(result.exit_code, 0)
+                mock_drop_all.assert_called_once()
+
+    def test_sqlalchemy_2x_connection_context(self):
+        """Test that connection context manager works with SQLAlchemy 2.x."""
+        # This tests the pattern used in _wait_for_db_connection
+        with db.engine.connect() as conn:
+            result = conn.execute(text("SELECT 1;"))
+            row = result.fetchone()
+            self.assertEqual(row[0], 1)

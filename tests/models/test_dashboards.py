@@ -1,4 +1,4 @@
-from redash.models import Dashboard, db
+from redash.models import Dashboard, Favorite, db
 from tests import BaseTestCase
 
 
@@ -82,3 +82,61 @@ class TestDashboardsByUser(BaseTestCase):
         results = Dashboard.all(self.factory.org, usr.group_ids, usr.id)
 
         self.assertEqual(2, results.count(), "The incorrect number of dashboards were returned")
+
+
+class TestDashboardFavorites(BaseTestCase):
+    def test_returns_only_favorited_dashboards(self):
+        """Test Dashboard.favorites() returns only dashboards favorited by the user."""
+        # Create two dashboards
+        dashboard1 = self.factory.create_dashboard(name="Dashboard 1")
+        dashboard2 = self.factory.create_dashboard(name="Dashboard 2")
+
+        # Favorite only dashboard1
+        favorite = Favorite(
+            org_id=self.factory.org.id,
+            object_type="Dashboard",
+            object_id=dashboard1.id,
+            user_id=self.factory.user.id,
+        )
+        db.session.add(favorite)
+        db.session.commit()
+
+        # Get favorited dashboards
+        favorited = Dashboard.favorites(self.factory.user).all()
+
+        # Should only return dashboard1
+        self.assertEqual(len(favorited), 1)
+        self.assertEqual(favorited[0].id, dashboard1.id)
+
+    def test_favorites_excludes_non_favorited(self):
+        """Test that non-favorited dashboards are not returned."""
+        # Create three dashboards
+        dashboard1 = self.factory.create_dashboard(name="Dashboard 1")
+        dashboard2 = self.factory.create_dashboard(name="Dashboard 2")
+        dashboard3 = self.factory.create_dashboard(name="Dashboard 3")
+
+        # Favorite dashboard1 and dashboard3, but not dashboard2
+        fav1 = Favorite(
+            org_id=self.factory.org.id,
+            object_type="Dashboard",
+            object_id=dashboard1.id,
+            user_id=self.factory.user.id,
+        )
+        fav3 = Favorite(
+            org_id=self.factory.org.id,
+            object_type="Dashboard",
+            object_id=dashboard3.id,
+            user_id=self.factory.user.id,
+        )
+        db.session.add_all([fav1, fav3])
+        db.session.commit()
+
+        # Get favorited dashboards
+        favorited = Dashboard.favorites(self.factory.user).all()
+        favorited_ids = {d.id for d in favorited}
+
+        # Should return dashboard1 and dashboard3, but not dashboard2
+        self.assertEqual(len(favorited), 2)
+        self.assertIn(dashboard1.id, favorited_ids)
+        self.assertIn(dashboard3.id, favorited_ids)
+        self.assertNotIn(dashboard2.id, favorited_ids)

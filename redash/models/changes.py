@@ -1,5 +1,6 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy_utils.models import generic_repr
 
 from .base import Column, GFKBase, db, key_type, primary_key
@@ -65,7 +66,10 @@ class ChangeTrackingMixin:
             self.prep_cleanvalues()
         for attr in inspect(self.__class__).column_attrs:
             (col,) = attr.columns
-            previous = getattr(self, attr.key, None)
+            try:
+                previous = getattr(self, attr.key, None)
+            except UnmappedInstanceError:
+                previous = None
             self._clean_values[col.name] = previous
 
         super(ChangeTrackingMixin, self).__setattr__(key, value)

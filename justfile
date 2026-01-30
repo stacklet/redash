@@ -42,6 +42,18 @@ backend-test *flags:
 	echo "Cleaning up..."
 	docker compose down -v
 
+cleanup-backend-test:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	export COMPOSE_FILE=.ci/compose.ci.yaml
+	export COMPOSE_PROJECT_NAME=redash
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
+
+	echo "Cleaning up..."
+	docker compose down -v
+
 # Run frontend unit tests
 frontend-test:
 	@echo "Running frontend unit tests..."
@@ -78,6 +90,18 @@ e2e-test:
 
 	echo "Running Cypress tests..."
 	yarn cypress run-ci
+
+	echo "Cleaning up..."
+	docker compose down -v
+
+cleanup-e2e-test:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	export COMPOSE_FILE=.ci/compose.cypress.yaml
+	export COMPOSE_PROJECT_NAME=cypress
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
 
 	echo "Cleaning up..."
 	docker compose down -v

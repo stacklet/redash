@@ -1,5 +1,5 @@
 from flask import make_response, request
-from flask_restful import abort
+from flask_restx import abort
 from sqlalchemy.exc import IntegrityError
 
 from redash import models

@@ -1,7 +1,7 @@
 import functools
 
 from flask_login import current_user
-from flask_restful import abort
+from flask_restx import abort
 from funcy import flatten
 
 view_only = True

@@ -16,7 +16,7 @@ class TestAlertAll(BaseTestCase):
 
         alert1 = self.factory.create_alert(query_rel=query1)
         alert2 = self.factory.create_alert(query_rel=query2)
-        db.session.flush()
+        db.session.commit()
 
         alerts = Alert.all(group_ids=[group.id, self.factory.default_group.id])
         self.assertIn(alert1, alerts)

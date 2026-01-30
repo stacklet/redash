@@ -59,7 +59,7 @@ class TestLogChange(BaseTestCase):
         obj.record_changes(changed_by=self.factory.user)
         obj.name = "Query 2"
         obj.description = "description"
-        db.session.flush()
+        db.session.commit()
         obj.record_changes(changed_by=self.factory.user)
 
         change = Change.last_change(obj)

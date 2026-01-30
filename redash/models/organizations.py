@@ -27,6 +27,14 @@ class Organization(TimestampMixin, db.Model):
     def __str__(self):
         return "%s (%s)" % (self.name, self.id)
 
+    def __eq__(self, other):
+        if not isinstance(other, Organization):
+            return False
+        return self.id == other.id
+
+    def __hash__(self):
+        return hash(self.id)
+
     @classmethod
     def get_by_slug(cls, slug):
         return cls.query.filter(cls.slug == slug).first()
@@ -37,7 +45,11 @@ class Organization(TimestampMixin, db.Model):
 
     @property
     def default_group(self):
-        return self.groups.filter(Group.name == "default", Group.type == Group.BUILTIN_GROUP).first()
+        return Group.query.filter(
+            Group.org_id == self.id,
+            Group.name == "default",
+            Group.type == Group.BUILTIN_GROUP
+        ).first()
 
     @property
     def google_apps_domains(self):
@@ -79,7 +91,11 @@ class Organization(TimestampMixin, db.Model):
 
     @property
     def admin_group(self):
-        return self.groups.filter(Group.name == "admin", Group.type == Group.BUILTIN_GROUP).first()
+        return Group.query.filter(
+            Group.org_id == self.id,
+            Group.name == "admin",
+            Group.type == Group.BUILTIN_GROUP
+        ).first()
 
     def has_user(self, email):
-        return self.users.filter(User.email == email).count() == 1
+        return User.query.filter(User.org_id == self.id, User.email == email).count() == 1

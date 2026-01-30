@@ -29,7 +29,10 @@ def should_notify(alert, new_state):
 def check_alerts_for_query(query_id, metadata):
     logger.debug("Checking query %d for alerts", query_id)
 
-    query = models.Query.query.get(query_id)
+    query = models.db.session.get(models.Query, query_id)
+    if query is None:
+        logger.warning("Query %d not found", query_id)
+        return
 
     for alert in query.alerts:
         logger.info("Checking alert (%d) of query %d.", alert.id, query_id)

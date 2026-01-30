@@ -282,6 +282,7 @@ class TestQuerySnippet(BaseTestCase):
             project(res.json, ["id", "trigger", "description", "snippet"]),
             {"id": 1, "trigger": "x", "description": "y", "snippet": "z"},
         )
+        qs = models.db.session.get(models.QuerySnippet, 1)
         self.assertEqual(qs.trigger, "x")
         self.assertEqual(qs.description, "y")
         self.assertEqual(qs.snippet, "z")

@@ -9,6 +9,7 @@ from flask import current_app, request_started, url_for
 from flask_login import AnonymousUserMixin, UserMixin, current_user
 from passlib.apps import custom_app_context as pwd_context
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.orm import object_session
 from sqlalchemy_utils import EmailType
 from sqlalchemy_utils.models import generic_repr
 
@@ -176,7 +177,11 @@ class User(TimestampMixin, db.Model, BelongsToOrgMixin, UserMixin, PermissionsCh
     @property
     def permissions(self):
         # TODO: this should be cached.
-        return list(itertools.chain(*[g.permissions for g in Group.query.filter(Group.id.in_(self.group_ids))]))
+        if not self.group_ids:
+            return []
+        session = object_session(self) or db.session
+        groups = session.query(Group).filter(Group.id.in_(self.group_ids)).all()
+        return list(itertools.chain(*[g.permissions for g in groups]))
 
     @classmethod
     def get_by_org(cls, org):

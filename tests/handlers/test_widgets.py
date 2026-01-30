@@ -29,6 +29,7 @@ class WidgetAPITest(BaseTestCase):
         vis.query_rel.data_source = ds
 
         models.db.session.add(vis.query_rel)
+        models.db.session.commit()
 
         data = {
             "visualization_id": vis.id,

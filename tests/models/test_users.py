@@ -68,7 +68,7 @@ class TestUserRegenerateApiKey(BaseTestCase):
         user.regenerate_api_key()
 
         # check committed by research
-        user = User.query.get(user.id)
+        user = db.session.get(User, user.id)
         self.assertNotEqual(user.api_key, before_api_key)
 
 
@@ -85,10 +85,12 @@ class TestUserDetail(BaseTestCase):
     def test_userdetail_db_default_save(self):
         with authenticated_user(self.client) as user:
             user.details["test"] = 1
+            db.session.add(user)
             db.session.commit()
 
             user_reloaded = User.query.filter_by(id=user.id).first()
             self.assertEqual(user.details["test"], 1)
+
             self.assertEqual(
                 user_reloaded,
                 User.query.filter(User.details["test"].astext.cast(db.Integer) == 1).first(),

@@ -1,5 +1,6 @@
 from flask import request
 from funcy import project
+from werkzeug.exceptions import NotFound
 
 from redash import models, utils
 from redash.handlers.base import (
@@ -99,7 +100,6 @@ class AlertListResource(BaseResource):
         )
 
         models.db.session.add(alert)
-        models.db.session.flush()
         models.db.session.commit()
 
         self.record_event({"action": "create", "object_id": alert.id, "object_type": "alert"})
@@ -150,7 +150,9 @@ class AlertSubscriptionListResource(BaseResource):
 
 class AlertSubscriptionResource(BaseResource):
     def delete(self, alert_id, subscriber_id):
-        subscription = models.AlertSubscription.query.get_or_404(subscriber_id)
+        subscription = models.db.session.get(models.AlertSubscription, subscriber_id)
+        if subscription is None:
+            raise NotFound()
         require_admin_or_owner(subscription.user.id)
         models.db.session.delete(subscription)
         models.db.session.commit()

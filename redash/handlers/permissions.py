@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from flask import request
-from flask_restful import abort
+from flask_restx import abort
 from sqlalchemy.orm.exc import NoResultFound
 
 from redash.handlers.base import BaseResource, get_object_or_404
@@ -76,7 +76,7 @@ class ObjectPermissionsListResource(BaseResource):
         grantee_id = req["user_id"]
         access_type = req["access_type"]
 
-        grantee = User.query.get(req["user_id"])
+        grantee = db.session.get(User, req["user_id"])
         if grantee is None:
             abort(400, message="User not found.")
 

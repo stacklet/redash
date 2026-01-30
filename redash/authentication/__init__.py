@@ -53,6 +53,7 @@ def load_user(user_id_with_identity):
     try:
         user_id, _ = user_id_with_identity.split("-")
         user = models.User.get_by_id_and_org(user_id, org)
+        models.db.session.refresh(user)  # Force reload from database
         if user.is_disabled or user.get_id() != user_id_with_identity:
             return None
 
@@ -85,7 +86,9 @@ def hmac_load_user_from_request(request):
     # TODO: 3600 should be a setting
     if signature and time.time() < expires <= time.time() + 3600:
         if user_id:
-            user = models.User.query.get(user_id)
+            user = models.db.session.get(models.User, user_id)
+            if user is None:
+                return None
             calculated_signature = sign(user.api_key, request.path, expires)
 
             if user.api_key and signature == calculated_signature:

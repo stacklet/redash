@@ -22,6 +22,7 @@ class TestObjectPermissionsListGet(BaseTestCase):
             grantor=self.factory.user,
             grantee=self.factory.user,
         )
+        self.db.session.commit()
 
         rv = self.make_request("get", "/api/queries/{}/acl".format(query.id), user=user)
 
@@ -171,6 +172,7 @@ class TestCheckPermissionsGet(BaseTestCase):
             grantor=self.factory.user,
             grantee=other_user,
         )
+        self.db.session.commit()
 
         rv = self.make_request(
             "get",

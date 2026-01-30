@@ -2,7 +2,7 @@ import logging
 import time
 
 from flask import make_response, request
-from flask_restful import abort
+from flask_restx import abort
 from funcy import project
 from sqlalchemy.exc import IntegrityError
 
