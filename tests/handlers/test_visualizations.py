@@ -76,7 +76,7 @@ class VisualizationResourceTest(BaseTestCase):
 
     def test_only_owner_collaborator_or_admin_can_edit_visualization(self):
         vis = self.factory.create_visualization()
-        models.db.session.flush()
+        models.db.session.commit()
         path = "/api/visualizations/{}".format(vis.id)
         data = {"name": "After Update"}
 
@@ -107,7 +107,7 @@ class VisualizationResourceTest(BaseTestCase):
 
     def test_only_owner_collaborator_or_admin_can_delete_visualization(self):
         vis = self.factory.create_visualization()
-        models.db.session.flush()
+        models.db.session.commit()
         path = "/api/visualizations/{}".format(vis.id)
 
         other_user = self.factory.create_user()

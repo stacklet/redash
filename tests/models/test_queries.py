@@ -14,7 +14,7 @@ class QueryTest(BaseTestCase):
         old_hash = q.query_hash
 
         q.query_text = "SELECT 2;"
-        db.session.flush()
+        db.session.commit()
         self.assertNotEqual(old_hash, q.query_hash)
 
     def create_tagged_query(self, tags):
@@ -68,7 +68,7 @@ class QueryTest(BaseTestCase):
         q1 = self.factory.create_query(description="Testing search")
         q2 = self.factory.create_query(description="Testing searching")
         q3 = self.factory.create_query(description="Testing sea rch")
-        db.session.flush()
+        db.session.commit()
         queries = Query.search(str(q3.id), [self.factory.default_group.id])
 
         self.assertIn(q3, queries)
@@ -77,7 +77,7 @@ class QueryTest(BaseTestCase):
 
     def test_search_by_number(self):
         q = self.factory.create_query(description="Testing search 12345")
-        db.session.flush()
+        db.session.commit()
         queries = Query.search("12345", [self.factory.default_group.id])
 
         self.assertIn(q, queries)
@@ -114,7 +114,7 @@ class QueryTest(BaseTestCase):
         ds.add_group(second_group, False)
 
         self.factory.create_query(description="Testing search", data_source=ds)
-        db.session.flush()
+        db.session.commit()
         queries = list(
             Query.search(
                 "Testing",
@@ -128,9 +128,9 @@ class QueryTest(BaseTestCase):
         # This should be a test of ModelTimestampsMixin, but it's easier to test in context of existing model... :-\
         one_day_ago = utcnow().date() - datetime.timedelta(days=1)
         q = self.factory.create_query(created_at=one_day_ago, updated_at=one_day_ago)
-        db.session.flush()
+        db.session.commit()
         q.name = "x"
-        db.session.flush()
+        db.session.commit()
         self.assertNotEqual(q.updated_at, one_day_ago)
 
     def test_search_is_case_insensitive(self):
@@ -240,7 +240,9 @@ class QueryRecentTest(BaseTestCase):
     def test_global_recent(self):
         q1 = self.factory.create_query()
         q2 = self.factory.create_query()
-        db.session.flush()
+        db.session.commit()
+        db.session.add(self.factory.org)
+        db.session.add(self.factory.user)
         e = Event(
             org=self.factory.org,
             user=self.factory.user,
@@ -257,6 +259,8 @@ class QueryRecentTest(BaseTestCase):
         q1 = self.factory.create_query()
         q2 = self.factory.create_query(is_draft=True)
 
+        db.session.add(self.factory.org)
+        db.session.add(self.factory.user)
         db.session.add_all(
             [
                 Event(
@@ -283,7 +287,9 @@ class QueryRecentTest(BaseTestCase):
     def test_recent_for_user(self):
         q1 = self.factory.create_query()
         q2 = self.factory.create_query()
-        db.session.flush()
+        db.session.commit()
+        db.session.add(self.factory.org)
+        db.session.add(self.factory.user)
         e = Event(
             org=self.factory.org,
             user=self.factory.user,
@@ -305,21 +311,25 @@ class QueryRecentTest(BaseTestCase):
         q1 = self.factory.create_query()
         ds = self.factory.create_data_source(group=self.factory.create_group())
         q2 = self.factory.create_query(data_source=ds)
-        db.session.flush()
-        Event(
-            org=self.factory.org,
-            user=self.factory.user,
-            action="edit",
-            object_type="query",
-            object_id=q1.id,
-        )
-        Event(
-            org=self.factory.org,
-            user=self.factory.user,
-            action="edit",
-            object_type="query",
-            object_id=q2.id,
-        )
+        db.session.commit()
+        db.session.add(self.factory.org)
+        db.session.add(self.factory.user)
+        db.session.add_all([
+            Event(
+                org=self.factory.org,
+                user=self.factory.user,
+                action="edit",
+                object_type="query",
+                object_id=q1.id,
+            ),
+            Event(
+                org=self.factory.org,
+                user=self.factory.user,
+                action="edit",
+                object_type="query",
+                object_id=q2.id,
+            )
+        ])
 
         recent = Query.recent([self.factory.default_group.id])
 
@@ -396,7 +406,7 @@ class TestQueryFork(BaseTestCase):
         )
         fork_user = self.factory.create_user()
         forked_query = query.fork(fork_user)
-        db.session.flush()
+        db.session.commit()
 
         forked_visualization_chart = None
         forked_visualization_box = None

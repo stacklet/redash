@@ -1,5 +1,5 @@
 from flask import make_response
-from flask_restful import Api
+from flask_restx import Api
 from werkzeug.wrappers import Response
 
 from redash.handlers.alerts import (

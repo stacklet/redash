@@ -1,7 +1,7 @@
 import sqlparse
 from flask import jsonify, request, url_for
 from flask_login import login_required
-from flask_restful import abort
+from flask_restx import abort
 from funcy import partial
 from sqlalchemy.orm.exc import StaleDataError
 

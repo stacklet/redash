@@ -178,10 +178,12 @@ class QueryExecutor:
         self.data_source_id = data_source_id
         self.metadata = metadata
         self.data_source = self._load_data_source()
+        if self.data_source is None:
+            raise Exception(f"Data source {data_source_id} not found. It may have been deleted.")
         self.query_id = metadata.get("query_id")
         self.user = _resolve_user(user_id, is_api_key, metadata.get("query_id"))
         self.query_model = (
-            models.Query.query.get(self.query_id)
+            models.db.session.get(models.Query, self.query_id)
             if self.query_id and self.query_id != "adhoc"
             else None
         )  # fmt: skip
@@ -230,15 +232,17 @@ class QueryExecutor:
         if error is not None and data is None:
             result = QueryExecutionError(error)
             if self.is_scheduled_query:
-                self.query_model = models.db.session.merge(self.query_model, load=False)
-                track_failure(self.query_model, error)
+                self.query_model = models.db.session.get(models.Query, self.query_model.id)
+                if self.query_model is not None:
+                    track_failure(self.query_model, error)
             raise result
         else:
             if self.query_model and self.query_model.schedule_failures > 0:
-                self.query_model = models.db.session.merge(self.query_model, load=False)
-                self.query_model.schedule_failures = 0
-                self.query_model.skip_updated_at = True
-                models.db.session.add(self.query_model)
+                self.query_model = models.db.session.get(models.Query, self.query_model.id)
+                if self.query_model is not None:
+                    self.query_model.schedule_failures = 0
+                    self.query_model.skip_updated_at = True
+                    models.db.session.add(self.query_model)
 
             query_result = models.QueryResult.store_result(
                 self.data_source.org_id,
@@ -287,7 +291,7 @@ class QueryExecutor:
 
     def _load_data_source(self):
         logger.info("job=execute_query state=load_ds ds_id=%d", self.data_source_id)
-        return models.DataSource.query.get(self.data_source_id)
+        return models.db.session.get(models.DataSource, self.data_source_id)
 
 
 # user_id is added last as a keyword argument for backward compatability -- to support executing previously submitted

@@ -36,20 +36,20 @@ def update_query_hash(record):
 def upgrade():
     conn = op.get_bind()
 
-    metadata = sa.MetaData(bind=conn)
-    queries = sa.Table("queries", metadata, autoload=True)
-    data_sources = sa.Table("data_sources", metadata, autoload=True)
+    metadata = sa.MetaData()
+    queries = sa.Table("queries", metadata, autoload_with=conn)
+    data_sources = sa.Table("data_sources", metadata, autoload_with=conn)
 
     joined_table = queries.outerjoin(data_sources, queries.c.data_source_id == data_sources.c.id)
 
-    query = select([
+    query = select(
         queries.c.id.label("query_id"),
         queries.c.query,
         queries.c.query_hash,
         queries.c.options,
         data_sources.c.id.label("data_source_id"),
         data_sources.c.type
-    ]).select_from(joined_table)
+    ).select_from(joined_table)
 
     for record in conn.execute(query):
         new_hash = update_query_hash(record)

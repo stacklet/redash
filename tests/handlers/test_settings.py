@@ -1,4 +1,4 @@
-from redash.models import Organization
+from redash.models import Organization, db
 from tests import BaseTestCase
 
 
@@ -12,7 +12,9 @@ class TestOrganizationSettings(BaseTestCase):
             user=admin,
         )
         self.assertEqual(rv.json["settings"]["auth_password_login_enabled"], False)
-        self.assertEqual(self.factory.org.settings["settings"]["auth_password_login_enabled"], False)
+        # Reload org after make_request() expired all objects
+        org = db.session.get(Organization, self.factory.org.id)
+        self.assertEqual(org.settings["settings"]["auth_password_login_enabled"], False)
 
         rv = self.make_request(
             "post",
@@ -39,7 +41,10 @@ class TestOrganizationSettings(BaseTestCase):
     def test_get_returns_google_appas_domains(self):
         admin = self.factory.create_admin()
         domains = ["example.com"]
+        # Re-add org to session since it may have been detached
+        self.db.session.add(admin.org)
         admin.org.settings[Organization.SETTING_GOOGLE_APPS_DOMAINS] = domains
+        self.db.session.commit()
 
         rv = self.make_request("get", "/api/settings/organization", user=admin)
         self.assertEqual(rv.json["settings"]["auth_google_apps_domains"], domains)

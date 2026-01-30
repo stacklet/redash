@@ -7,7 +7,7 @@ from cryptography.fernet import InvalidToken
 from flask.cli import AppGroup
 from flask_migrate import stamp, upgrade
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, text
 from sqlalchemy_utils.types.encrypted.encrypted_type import FernetEngine
 
 from redash import settings
@@ -22,7 +22,8 @@ def _wait_for_db_connection(db):
     retried = False
     while not retried:
         try:
-            db.engine.execute("SELECT 1;")
+            with db.engine.connect() as conn:
+                conn.execute(text("SELECT 1;"))
             return
         except DatabaseError:
             time.sleep(30)
@@ -34,9 +35,8 @@ def is_db_empty():
     from redash.models import db
 
     schema = db.metadata.schema
-    schema_prefix = f"{schema}." if schema else ""
     extant_tables = set(sqlalchemy.inspect(db.engine).get_table_names(schema=schema))
-    redash_tables = set(table[len(schema_prefix):] if schema_prefix and table.startswith(schema_prefix) else table for table in db.metadata.tables)
+    redash_tables = set(table.lstrip(f"{schema}.") for table in db.metadata.tables)
     num_missing = len(redash_tables - redash_tables.intersection(extant_tables))
     print(f"Checking schema {schema} for tables {redash_tables}: found {extant_tables} (missing {num_missing})")
     return num_missing == len(redash_tables)
@@ -45,7 +45,7 @@ def is_db_empty():
 def load_extensions(db):
     with db.engine.connect() as connection:
         for extension in settings.dynamic_settings.database_extensions:
-            connection.execute(f'CREATE EXTENSION IF NOT EXISTS "{extension}";')
+            connection.execute(text(f'CREATE EXTENSION IF NOT EXISTS "{extension}";'))
 
 
 @manager.command(name="create_tables")
@@ -76,23 +76,22 @@ def create_tables():
         sqlalchemy.orm.configure_mappers()
         db.create_all()
 
-        # Setup row-level security policies for the query_results table
         schema = settings.SQLALCHEMY_DATABASE_SCHEMA or "public"
-        db.session.execute(f"ALTER TABLE {schema}.query_results ENABLE ROW LEVEL SECURITY")
+        db.session.execute(text(f"ALTER TABLE {schema}.query_results ENABLE ROW LEVEL SECURITY"))
         db.session.execute(
-            f"""
+            text(f"""
             CREATE POLICY all_visible ON {schema}.query_results
             USING (true);
-            """
+            """)
         )
         db.session.execute(
-            f"""
+            text(f"""
             CREATE POLICY limited_visibility ON {schema}.query_results
             AS RESTRICTIVE
             FOR SELECT
             TO limited_visibility
             USING (current_user = db_role);
-            """
+            """)
         )
 
         # Need to mark current DB as up to date
@@ -146,7 +145,7 @@ def reencrypt(old_secret, new_secret, show_sql):
         )
 
         update = table_for_update.update()
-        selected_items = db.session.execute(select([table_for_select]))
+        selected_items = db.session.execute(select(table_for_select))
         for item in selected_items:
             try:
                 stmt = update.where(table_for_update.c.id == item["id"]).values(
