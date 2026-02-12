@@ -158,22 +158,22 @@ cryptography = "*"
 
 [[package]]
 name = "azure-core"
-version = "1.32.0"
+version = "1.38.1"
 description = "Microsoft Azure Core Library for Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "azure_core-1.32.0-py3-none-any.whl", hash = "sha256:eac191a0efb23bfa83fddf321b27b122b4ec847befa3091fa736a5c32c50d7b4"},
-    {file = "azure_core-1.32.0.tar.gz", hash = "sha256:22b3c35d6b2dae14990f6c1be2912bf23ffe50b220e708a28ab1bb92b1c730e5"},
+    {file = "azure_core-1.38.1-py3-none-any.whl", hash = "sha256:69f08ee3d55136071b7100de5b198994fc1c5f89d2b91f2f43156d20fcf200a4"},
+    {file = "azure_core-1.38.1.tar.gz", hash = "sha256:9317db1d838e39877eb94a2240ce92fa607db68adf821817b723f0d679facbf6"},
 ]
 
 [package.dependencies]
 requests = ">=2.21.0"
-six = ">=1.11.0"
 typing-extensions = ">=4.6.0"
 
 [package.extras]
 aio = ["aiohttp (>=3.0)"]
+tracing = ["opentelemetry-api (>=1.26,<2.0)"]
 
 [[package]]
 name = "azure-identity"
@@ -5711,4 +5711,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "4d4f0e12a528ca909ea31fef38e8579431ce6a9be0a93b862a154b50e0275144"
+content-hash = "31a36fe6a452e925b8fb7146f862a65f293853d8f7a11941a7ada8f3b799e1fa"

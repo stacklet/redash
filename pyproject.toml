@@ -101,6 +101,7 @@ optional = true
 
 [tool.poetry.group.all_ds.dependencies]
 atsd-client = "3.0.5"
+azure-core = ">=1.38.0,<2"
 azure-kusto-data = "5.0.1"
 cassandra-driver = "3.21.0"
 certifi = ">=2019.9.11"
