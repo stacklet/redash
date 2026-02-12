@@ -166,8 +166,12 @@ watchdog = "3.0.0"
 ruff = "0.0.289"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build-constraints]
+cassandra-driver = { setuptools = "<82" }
+impyla = { setuptools = "<82" }
 
 [tool.ruff]
 exclude = [".git", "viz-lib", "node_modules", "migrations"]
