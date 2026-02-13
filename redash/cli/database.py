@@ -34,8 +34,9 @@ def is_db_empty():
     from redash.models import db
 
     schema = db.metadata.schema
+    schema_prefix = f"{schema}." if schema else ""
     extant_tables = set(sqlalchemy.inspect(db.engine).get_table_names(schema=schema))
-    redash_tables = set(table.lstrip(f"{schema}.") for table in db.metadata.tables)
+    redash_tables = set(table[len(schema_prefix):] if schema_prefix and table.startswith(schema_prefix) else table for table in db.metadata.tables)
     num_missing = len(redash_tables - redash_tables.intersection(extant_tables))
     print(f"Checking schema {schema} for tables {redash_tables}: found {extant_tables} (missing {num_missing})")
     return num_missing == len(redash_tables)
@@ -75,9 +76,7 @@ def create_tables():
         sqlalchemy.orm.configure_mappers()
         db.create_all()
 
-        # Create the limited_visibility role for row-level security policies
-        db.session.execute("CREATE ROLE limited_visibility NOLOGIN")
-
+        # Setup row-level security policies for the query_results table
         schema = settings.SQLALCHEMY_DATABASE_SCHEMA or "public"
         db.session.execute(f"ALTER TABLE {schema}.query_results ENABLE ROW LEVEL SECURITY")
         db.session.execute(

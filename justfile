@@ -35,6 +35,7 @@ backend-test *flags:
 	echo "Creating test database and schema..."
 	docker compose exec postgres psql -U postgres -c "CREATE DATABASE tests;" 2>/dev/null || echo "Database 'tests' already exists"
 	docker compose exec postgres psql -U postgres -c "CREATE SCHEMA IF NOT EXISTS redash;" tests
+	docker compose exec postgres psql -U postgres -c "CREATE ROLE limited_visibility NOLOGIN"
 
 	echo "Running tests..."
 	docker compose run --rm redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc {{ flags }} tests/
