@@ -464,17 +464,28 @@ function Sidebar({ navItems, navigate }) {
       <nav className="sidebar-nav">
         {navItems.map(item => {
           const isExpanded = item.children && expandedItems[item.id];
+          const isNavigable = !item.children && item.target && !item.target.startsWith("#");
+          const ItemTag = isNavigable ? "a" : "button";
+          const itemProps = isNavigable
+            ? {
+                href: item.target,
+                onClick: e => {
+                  e.preventDefault();
+                  handleItemClick(item);
+                },
+              }
+            : { onClick: () => handleItemClick(item) };
 
           return (
             <div key={item.id} className="sidebar-item-wrapper">
-              <button
+              <ItemTag
                 className={classnames("sidebar-item", {
                   active: item.active,
                   "has-children": item.children,
                   expanded: expandedItems[item.id],
                 })}
-                onClick={() => handleItemClick(item)}
-                aria-label={item.label}>
+                aria-label={item.label}
+                {...itemProps}>
                 <span className="sidebar-item-icon">
                   <item.Icon />
                 </span>
@@ -485,15 +496,28 @@ function Sidebar({ navItems, navigate }) {
                     {expandedItems[item.id] ? <UpOutlined /> : <DownOutlined />}
                   </span>
                 ) : null}
-              </button>
+              </ItemTag>
 
               {isExpanded ? (
                 <div className="sidebar-submenu">
-                  {item.children.map(child => (
-                    <button key={child.id} className="sidebar-submenu-item" onClick={() => navigate(child.target)}>
-                      {child.label}
-                    </button>
-                  ))}
+                  {item.children.map(child => {
+                    const isChildNavigable = child.target && !child.target.startsWith("#");
+                    const ChildTag = isChildNavigable ? "a" : "button";
+                    const childProps = isChildNavigable
+                      ? {
+                          href: child.target,
+                          onClick: e => {
+                            e.preventDefault();
+                            navigate(child.target);
+                          },
+                        }
+                      : { onClick: () => navigate(child.target) };
+                    return (
+                      <ChildTag key={child.id} className="sidebar-submenu-item" {...childProps}>
+                        {child.label}
+                      </ChildTag>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
