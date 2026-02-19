@@ -14,29 +14,17 @@ from redash.utils import json_dumps, json_loads, get_schema
 
 
 class RedashSQLAlchemy(SQLAlchemy):
-    def apply_driver_hacks(self, app, info, options):
-        options.update(json_serializer=json_dumps)
-        if settings.SQLALCHEMY_ENABLE_POOL_PRE_PING:
-            options.update(pool_pre_ping=True)
-        return super(RedashSQLAlchemy, self).apply_driver_hacks(app, info, options)
-
     def _make_engine(self, bind_key, options, app):
         # Stacklet customization: Override engine creation to use custom connection logic
         # See redash.stacklet.auth.get_env_db() for implementation details
         engine = get_env_db()
         if engine is not None:
             return engine
-        return super(RedashSQLAlchemy, self)._make_engine(bind_key, options, app)
-
-    def apply_pool_defaults(self, app, options):
-        super(RedashSQLAlchemy, self).apply_pool_defaults(app, options)
-        if settings.SQLALCHEMY_ENABLE_POOL_PRE_PING:
-            options["pool_pre_ping"] = True
         if settings.SQLALCHEMY_DISABLE_POOL:
-            options["poolclass"] = NullPool
-            # Remove options NullPool does not support:
-            options.pop("max_overflow", None)
-        return options
+            # NullPool does not support these options; remove any Flask-SQLAlchemy defaults
+            for key in ("pool_size", "max_overflow", "pool_timeout", "pool_recycle"):
+                options.pop(key, None)
+        return super(RedashSQLAlchemy, self)._make_engine(bind_key, options, app)
 
 
 md = None
@@ -50,11 +38,18 @@ class SearchBaseQuery(Query, SearchQueryMixin):
     """
 
 
+_engine_options = {
+    "execution_options": {"schema_translate_map": {None: get_schema()}},
+    "json_serializer": json_dumps,
+}
+if settings.SQLALCHEMY_ENABLE_POOL_PRE_PING:
+    _engine_options["pool_pre_ping"] = True
+if settings.SQLALCHEMY_DISABLE_POOL:
+    _engine_options["poolclass"] = NullPool
+
 db = RedashSQLAlchemy(
     session_options={"expire_on_commit": False},
-    engine_options={
-        "execution_options": {"schema_translate_map": {None: get_schema()}}
-    },
+    engine_options=_engine_options,
     metadata=md,
     query_class=SearchBaseQuery,
 )

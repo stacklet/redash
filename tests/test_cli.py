@@ -625,18 +625,61 @@ class DatabaseCommandTests(BaseTestCase):
 
     def test_load_extensions(self):
         """Test that load_extensions executes CREATE EXTENSION commands."""
-        # Mock the settings to include test extensions
         test_extensions = ["pg_trgm", "hstore"]
         with mock.patch.object(settings.dynamic_settings, "database_extensions", test_extensions):
-            # Mock the connection execute to track calls
-            with mock.patch.object(db.engine, "connect") as mock_connect:
+            with mock.patch.object(db.engine, "begin") as mock_begin:
                 mock_conn = mock.MagicMock()
-                mock_connect.return_value.__enter__.return_value = mock_conn
+                mock_begin.return_value.__enter__.return_value = mock_conn
 
                 load_extensions(db)
 
-                # Verify that execute was called for each extension
                 self.assertEqual(mock_conn.execute.call_count, len(test_extensions))
+
+    def test_load_extensions_uses_begin_for_autocommit(self):
+        """engine.begin() must be used instead of engine.connect().
+
+        SQLAlchemy 2.0 removed auto-commit from engine.connect(), so DDL
+        executed there is silently rolled back.  engine.begin() commits
+        automatically on success.
+        """
+        test_extensions = ["pg_trgm"]
+        with mock.patch.object(settings.dynamic_settings, "database_extensions", test_extensions):
+            with mock.patch.object(db.engine, "begin") as mock_begin:
+                with mock.patch.object(db.engine, "connect") as mock_connect:
+                    mock_conn = mock.MagicMock()
+                    mock_begin.return_value.__enter__.return_value = mock_conn
+
+                    load_extensions(db)
+
+                    mock_begin.assert_called_once()
+                    mock_connect.assert_not_called()
+
+    def test_is_db_empty_schema_prefix_not_corrupted(self):
+        """removeprefix() must be used so table names are not mangled.
+
+        str.lstrip() treats its argument as a set of characters, not a prefix.
+        With schema "redash", lstrip("redash.") strips any leading character in
+        {'r','e','d','a','s','h','.'}, so "redash.dashboards" -> "boards" and
+        "redash.data_sources" -> "ta_sources".  removeprefix() strips the exact
+        string once, giving the correct bare table names.
+        """
+        fake_tables = {
+            "redash.dashboards": mock.MagicMock(),   # lstrip -> "boards"
+            "redash.data_sources": mock.MagicMock(),  # lstrip -> "ta_sources"
+        }
+        with mock.patch.object(db.metadata, "schema", "redash"):
+            with mock.patch.object(db.metadata, "tables", fake_tables):
+                with mock.patch("sqlalchemy.inspect") as mock_inspect:
+                    mock_inspector = mock.MagicMock()
+                    mock_inspector.get_table_names.return_value = ["dashboards", "data_sources"]
+                    mock_inspect.return_value = mock_inspector
+
+                    result = is_db_empty()
+
+        # Both tables exist; with correct stripping DB is not empty.
+        # With lstrip the names would be "boards"/"ta_sources" which don't
+        # match, causing is_db_empty to wrongly return True.
+        self.assertFalse(result)
 
     def test_create_tables_command_with_existing_tables(self):
         """Test the create_tables CLI command when tables already exist."""

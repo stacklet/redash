@@ -36,14 +36,14 @@ def is_db_empty():
 
     schema = db.metadata.schema
     extant_tables = set(sqlalchemy.inspect(db.engine).get_table_names(schema=schema))
-    redash_tables = set(table.lstrip(f"{schema}.") for table in db.metadata.tables)
+    redash_tables = set(table.removeprefix(f"{schema}.") for table in db.metadata.tables)
     num_missing = len(redash_tables - redash_tables.intersection(extant_tables))
     print(f"Checking schema {schema} for tables {redash_tables}: found {extant_tables} (missing {num_missing})")
     return num_missing == len(redash_tables)
 
 
 def load_extensions(db):
-    with db.engine.connect() as connection:
+    with db.engine.begin() as connection:
         for extension in settings.dynamic_settings.database_extensions:
             connection.execute(text(f'CREATE EXTENSION IF NOT EXISTS "{extension}";'))
 
