@@ -28,7 +28,8 @@ describe("Settings Tabs", () => {
     it("settings link should lead to Data Sources settings", () => {
       cy.getByTestId("SettingsLink")
         .should("exist")
-        .should("have.attr", "href", "data_sources");
+        .click();
+      cy.url().should("include", "data_sources");
     });
 
     it("all tabs should be available", () => {
@@ -47,7 +48,8 @@ describe("Settings Tabs", () => {
     it("settings link should lead to Users settings", () => {
       cy.getByTestId("SettingsLink")
         .should("exist")
-        .should("have.attr", "href", "users");
+        .click();
+      cy.url().should("include", "users");
     });
 
     it("limited set of settings tabs should be available", () => {

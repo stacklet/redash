@@ -56,7 +56,7 @@ frontend-test:
 # Run frontend e2e tests
 # ⚠️ these are big and slow and can easily take over 10 minutes to run on a modern laptop and ~45
 #    minutes in Github CI.
-e2e-test:
+e2e-test: cleanup-e2e-test
 	#!/usr/bin/env bash
 	set -euo pipefail
 
@@ -68,17 +68,36 @@ e2e-test:
 	echo "Building Cypress environment..."
 	yarn cypress build
 
-	echo "Starting Redash server..."
-	yarn cypress start -- --skip-db-seed
+	echo "Starting database services..."
+	docker compose up -d postgres redis
+	sleep 5
+
+	echo "Creating limited_visibility role..."
+	docker compose exec postgres psql -U postgres -c "CREATE ROLE limited_visibility NOLOGIN" 2>/dev/null || echo "Role already exists"
 
 	echo "Configuring database search_path for schema support..."
 	docker compose exec postgres psql -U postgres -d postgres -c "ALTER DATABASE postgres SET search_path TO redash,public"
+
+	echo "Starting Redash server..."
+	yarn cypress start -- --skip-db-seed
 
 	echo "Seeding database..."
 	docker compose run --rm cypress yarn cypress db-seed
 
 	echo "Running Cypress tests..."
 	yarn cypress run-ci
+
+	echo "Cleaning up..."
+	docker compose down -v
+
+cleanup-e2e-test:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	export COMPOSE_FILE=.ci/compose.cypress.yaml
+	export COMPOSE_PROJECT_NAME=cypress
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
 
 	echo "Cleaning up..."
 	docker compose down -v

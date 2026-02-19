@@ -2,7 +2,7 @@
 
 import { getWidgetTestId, editDashboard, resizeBy } from "../../support/dashboard";
 
-const menuWidth = 80;
+const menuWidth = 240;
 
 describe("Grid compliant widgets", () => {
   beforeEach(function() {

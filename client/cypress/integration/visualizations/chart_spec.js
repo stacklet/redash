@@ -33,7 +33,7 @@ describe("Chart", () => {
 
   it("creates Bar charts", function() {
     cy.visit(`queries/${this.queryId}/source`);
-    cy.getByTestId("ExecuteButton").click();
+    cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
 
     const getBarChartAssertionFunction = (specificBarChartAssertionFn = () => {}) => () => {
       // checks for TabbedEditor standard tabs
