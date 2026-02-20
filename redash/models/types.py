@@ -121,6 +121,11 @@ class json_cast_property(index_property):
                     value = date_parser.parse(value).date()
                 except (ValueError, TypeError):
                     pass
+            elif self.cast_type.python_type == time:
+                try:
+                    value = date_parser.parse(value).time()
+                except (ValueError, TypeError):
+                    pass
         return value
 
     def __set__(self, instance, value):

@@ -469,6 +469,51 @@ class TestQueryFork(BaseTestCase):
         self.assertEqual(query.tags, forked_query.tags)
 
 
+class TestAllGroupsForQueryIds(BaseTestCase):
+    def test_returns_groups_for_single_query_id(self):
+        group = self.factory.create_group()
+        ds = self.factory.create_data_source(group=group)
+        q = self.factory.create_query(data_source=ds)
+        db.session.commit()
+
+        rows = Query.all_groups_for_query_ids([q.id])
+
+        group_ids = [row[0] for row in rows]
+        self.assertIn(group.id, group_ids)
+
+    def test_returns_groups_for_multiple_query_ids(self):
+        # Explicitly exercises the IN clause with multiple values, which
+        # requires bindparam("ids", expanding=True) in SQLAlchemy 2.0.
+        group1 = self.factory.create_group()
+        group2 = self.factory.create_group()
+        ds1 = self.factory.create_data_source(group=group1)
+        ds2 = self.factory.create_data_source(group=group2)
+        q1 = self.factory.create_query(data_source=ds1)
+        q2 = self.factory.create_query(data_source=ds2)
+        db.session.commit()
+
+        rows = Query.all_groups_for_query_ids([q1.id, q2.id])
+
+        group_ids = [row[0] for row in rows]
+        self.assertIn(group1.id, group_ids)
+        self.assertIn(group2.id, group_ids)
+
+    def test_excludes_queries_not_in_ids(self):
+        group1 = self.factory.create_group()
+        group2 = self.factory.create_group()
+        ds1 = self.factory.create_data_source(group=group1)
+        ds2 = self.factory.create_data_source(group=group2)
+        q1 = self.factory.create_query(data_source=ds1)
+        q2 = self.factory.create_query(data_source=ds2)
+        db.session.commit()
+
+        rows = Query.all_groups_for_query_ids([q1.id])
+
+        group_ids = [row[0] for row in rows]
+        self.assertIn(group1.id, group_ids)
+        self.assertNotIn(group2.id, group_ids)
+
+
 class TestQueryUpdateLatestResult(BaseTestCase):
     def setUp(self):
         super(TestQueryUpdateLatestResult, self).setUp()

@@ -30,10 +30,14 @@ class Organization(TimestampMixin, db.Model):
     def __eq__(self, other):
         if not isinstance(other, Organization):
             return False
+        if self.id is None:
+            return self is other
         return self.id == other.id
 
     def __hash__(self):
-        return hash(self.id)
+        # Use identity-based hash for unsaved objects (id=None) to stay
+        # consistent with __eq__, which falls back to identity in that case.
+        return id(self) if self.id is None else hash(self.id)
 
     @classmethod
     def get_by_slug(cls, slug):

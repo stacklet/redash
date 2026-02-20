@@ -1,9 +1,29 @@
 from mock import ANY, patch
 from sqlalchemy import select
 
-from redash.metrics.database import _table_name_from_select_element
+from redash.metrics.database import _first_from, _table_name_from_select_element
 from redash.models import Query, User
 from tests import BaseTestCase
+
+
+class TestFirstFrom(BaseTestCase):
+    def test_returns_first_element_of_non_empty_list(self):
+        self.assertEqual(_first_from(["a", "b", "c"]), "a")
+
+    def test_raises_attribute_error_on_empty_list(self):
+        with self.assertRaises(AttributeError):
+            _first_from([])
+
+    def test_raises_attribute_error_not_index_error_on_empty_list(self):
+        # Callers catch AttributeError; an IndexError would fall through to
+        # the generic Exception handler and produce spurious error log entries.
+        try:
+            _first_from([])
+            self.fail("Expected AttributeError")
+        except AttributeError:
+            pass
+        except IndexError:
+            self.fail("Raised IndexError instead of AttributeError")
 
 
 class TestTableNameExtraction(BaseTestCase):

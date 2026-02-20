@@ -5,7 +5,7 @@ import numbers
 import time
 
 import pytz
-from sqlalchemy import UniqueConstraint, and_, cast, distinct, func, or_, text
+from sqlalchemy import UniqueConstraint, and_, bindparam, cast, distinct, func, or_, text
 from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB
 from flask_login import current_user
 from sqlalchemy.event import listens_for
@@ -772,7 +772,10 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                    JOIN {schema_prefix}data_source_groups ON {schema_prefix}queries.data_source_id = {schema_prefix}data_source_groups.data_source_id
                    WHERE {schema_prefix}queries.id in :ids"""
 
-        return db.session.execute(text(query), {"ids": tuple(query_ids)}).fetchall()
+        return db.session.execute(
+            text(query).bindparams(bindparam("ids", expanding=True)),
+            {"ids": list(query_ids)},
+        ).fetchall()
 
     @classmethod
     def update_latest_result(cls, query_result):

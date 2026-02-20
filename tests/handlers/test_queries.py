@@ -14,7 +14,7 @@ class TestQueryResourceGet(BaseTestCase):
 
         self.assertEqual(rv.status_code, 200)
         # Reload query after make_request() called expire_all()
-        query = Query.query.get(query.id)
+        query = db.session.get(Query, query.id)
         expected = serialize_query(query, with_visualizations=True)
         expected["can_edit"] = True
         expected["is_favorite"] = False

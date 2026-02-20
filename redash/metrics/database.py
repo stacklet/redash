@@ -12,9 +12,22 @@ from redash import statsd_client
 metrics_logger = logging.getLogger("metrics")
 
 
+def _first_from(froms):
+    """Return froms[0], or raise AttributeError if the list is empty.
+
+    Both get_final_froms() and .froms always return sequences, so IndexError
+    (empty list) is the only failure mode. We convert it to AttributeError so
+    all "can't extract table name" cases surface as a single exception type to
+    the caller.
+    """
+    if not froms:
+        raise AttributeError("Cannot extract table name from this query type")
+    return froms[0]
+
+
 def _table_name_from_select_element(elt):
     froms = elt.get_final_froms() if hasattr(elt, 'get_final_froms') else elt.froms
-    t = froms[0]
+    t = _first_from(froms)
 
     # Unwrap nested Subqueries and Aliases - keep processing until we get to a Table
     # Add iteration limit to prevent infinite loops on pathological queries
@@ -29,9 +42,9 @@ def _table_name_from_select_element(elt):
             if hasattr(t, 'element'):
                 element = t.element
                 if hasattr(element, 'get_final_froms'):
-                    t = element.get_final_froms()[0]
+                    t = _first_from(element.get_final_froms())
                 elif hasattr(element, 'froms'):
-                    t = element.froms[0]
+                    t = _first_from(element.froms)
                 else:
                     raise AttributeError("Cannot extract table name from this query type")
             else:
@@ -39,9 +52,9 @@ def _table_name_from_select_element(elt):
         # Handle Alias types (e.g., table aliases)
         elif isinstance(t, Alias):
             if hasattr(t.original, 'get_final_froms'):
-                t = t.original.get_final_froms()[0]
+                t = _first_from(t.original.get_final_froms())
             elif hasattr(t.original, 'froms'):
-                t = t.original.froms[0]
+                t = _first_from(t.original.froms)
             else:
                 # For table aliases, t.original is the table itself
                 t = t.original
