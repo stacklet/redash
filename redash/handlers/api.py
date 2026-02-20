@@ -102,8 +102,14 @@ class ApiExt(Api):
         urls = [org_scoped_rule(url) for url in urls]
         return self.add_resource(resource, *urls, **kwargs)
 
+    def init_app(self, app, **kwargs):
+        # Disable swagger.json spec endpoint; add_specs is only read in
+        # init_app (not __init__), so it must be forced here.
+        kwargs.setdefault("add_specs", False)
+        return super().init_app(app, **kwargs)
 
-api = ApiExt()
+
+api = ApiExt(doc=False)
 
 
 @api.representation("application/json")
