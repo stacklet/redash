@@ -131,7 +131,7 @@ describe("Textbox", () => {
     const txb1Pos = { col: 0, row: 0, sizeX: 3, sizeY: 2 };
     const txb2Pos = { col: 1, row: 1, sizeX: 3, sizeY: 4 };
 
-    cy.viewport(1215, 800);
+    cy.viewport(1375, 800);
     cy.addTextbox(id, "x", { position: txb1Pos })
       .then(() => cy.addTextbox(id, "x", { position: txb2Pos }))
       .then(getWidgetTestId)
@@ -142,7 +142,7 @@ describe("Textbox", () => {
       .should($el => {
         const { top, left } = $el.offset();
         expect(top).to.be.oneOf([162, 162.015625]);
-        expect(left).to.eq(282);
+        expect(left).to.eq(442);
         expect($el.width()).to.eq(545);
         expect($el.height()).to.eq(185);
       });

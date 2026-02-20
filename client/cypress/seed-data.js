@@ -28,6 +28,7 @@ exports.seedData = [
         port: 5432,
         sslmode: "prefer",
         user: "postgres",
+        search_path: "redash,public",
       },
       type: "pg",
     },

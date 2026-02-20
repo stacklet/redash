@@ -25,7 +25,7 @@ describe("Funnel", () => {
     cy.login();
     cy.createQuery({ query: SQL }).then(({ id }) => {
       cy.visit(`queries/${id}/source`);
-      cy.getByTestId("ExecuteButton").click();
+      cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
     });
   });
 

@@ -33,7 +33,7 @@ describe("Chart", () => {
 
   it("creates Bar charts", function() {
     cy.visit(`queries/${this.queryId}/source`);
-    cy.getByTestId("ExecuteButton").click();
+    cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
 
     const getBarChartAssertionFunction = (specificBarChartAssertionFn = () => {}) => () => {
       // checks for TabbedEditor standard tabs
@@ -109,6 +109,7 @@ describe("Chart", () => {
   });
   it("colors Bar charts", function() {
     cy.visit(`queries/${this.queryId}/source`);
+    cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
     cy.getByTestId("ExecuteButton").click();
     cy.getByTestId("NewVisualization").click();
     cy.getByTestId("Chart.ColumnMapping.x").selectAntdOption("Chart.ColumnMapping.x.stage");
@@ -123,6 +124,7 @@ describe("Chart", () => {
   });
   it("colors Pie charts", function() {
     cy.visit(`queries/${this.queryId}/source`);
+    cy.wait(1500); // eslint-disable-line cypress/no-unnecessary-waiting
     cy.getByTestId("ExecuteButton").click();
     cy.getByTestId("NewVisualization").click();
     cy.getByTestId("Chart.GlobalSeriesType").click();

@@ -2,7 +2,7 @@
 
 import { getWidgetTestId } from "../../support/dashboard";
 
-const menuWidth = 80;
+const menuWidth = 240;
 
 describe("Dashboard", () => {
   beforeEach(() => {
@@ -63,10 +63,10 @@ describe("Dashboard", () => {
       [`/dashboards/${id}`, `/dashboards/${id}-anything-here`, `/dashboard/${slug}`].forEach(url => {
         cy.visit(url);
         cy.wait("@LoadDashboard");
-        cy.getByTestId(`DashboardId${id}Container`).should("exist");
 
-        // assert it always use the "/dashboards/{id}" path
+        // assert it always use the "/dashboards/{id}" path (wait for redirect first)
         cy.location("pathname").should("contain", `/dashboards/${id}`);
+        cy.getByTestId(`DashboardId${id}Container`).should("exist");
       });
     });
   });

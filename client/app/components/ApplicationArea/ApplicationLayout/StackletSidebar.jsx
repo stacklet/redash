@@ -141,6 +141,7 @@ export default function StackletSidebar() {
           id: "new-dashboard",
           label: "New Dashboard",
           target: "#new-dashboard", // Special target to trigger dialog
+          dataTest: "CreateDashboardMenuItem",
         });
       }
 
@@ -156,6 +157,7 @@ export default function StackletSidebar() {
         id: "create",
         label: "Create",
         Icon: PlusOutlined,
+        dataTest: "CreateButton",
         children: createChildren,
       });
     }
@@ -174,6 +176,7 @@ export default function StackletSidebar() {
         id: "settings",
         label: "Settings",
         target: firstSettingsTab.path,
+        dataTest: "SettingsLink",
         Icon: SettingOutlined,
         active: activeState.settings,
       });
@@ -334,6 +337,7 @@ function UserMenu() {
           <div style={{ height: "1px", background: "#424B54", margin: "4px 0" }} />
           <button
             className="user-menu-item"
+            data-test="LogOutButton"
             onClick={handleLogout}
             style={{
               display: "flex",
@@ -370,6 +374,7 @@ function UserMenu() {
       <button
         ref={triggerRef}
         className="user-menu-trigger"
+        data-test="ProfileDropdown"
         onClick={toggleOpen}
         aria-label="User menu"
         style={{
@@ -399,6 +404,7 @@ function UserMenu() {
           }}>
           {currentUser.profile_image_url ? (
             <img
+              className="profile__image_thumb"
               src={currentUser.profile_image_url}
               alt={currentUser.name}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -485,6 +491,7 @@ function Sidebar({ navItems, navigate }) {
                   expanded: expandedItems[item.id],
                 })}
                 aria-label={item.label}
+                {...(item.dataTest ? { "data-test": item.dataTest } : {})}
                 {...itemProps}>
                 <span className="sidebar-item-icon">
                   <item.Icon />
@@ -513,7 +520,11 @@ function Sidebar({ navItems, navigate }) {
                         }
                       : { onClick: () => navigate(child.target) };
                     return (
-                      <ChildTag key={child.id} className="sidebar-submenu-item" {...childProps}>
+                      <ChildTag
+                        key={child.id}
+                        className="sidebar-submenu-item"
+                        {...(child.dataTest ? { "data-test": child.dataTest } : {})}
+                        {...childProps}>
                         {child.label}
                       </ChildTag>
                     );

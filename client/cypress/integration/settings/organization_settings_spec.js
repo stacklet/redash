@@ -21,8 +21,8 @@ describe("Settings", () => {
       name: "test date format",
       query: "SELECT NOW()",
     }).then(({ id: queryId }) => {
-      cy.visit(`/queries/${queryId}`);
-      cy.findByText("Refresh Now").click();
+      cy.visit(`/queries/${queryId}/source`);
+      cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
 
       // "created at" field is formatted with the date format.
       cy.getByTestId("TableVisualization")
