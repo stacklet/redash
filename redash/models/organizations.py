@@ -35,9 +35,12 @@ class Organization(TimestampMixin, db.Model):
         return self.id == other.id
 
     def __hash__(self):
-        # Use identity-based hash for unsaved objects (id=None) to stay
-        # consistent with __eq__, which falls back to identity in that case.
-        return id(self) if self.id is None else hash(self.id)
+        # Always hash by Python object identity. This keeps the hash stable
+        # over the object's lifetime even when id transitions from None to an
+        # integer on flush/commit. Within a session, SQLAlchemy's identity map
+        # ensures a single Python object per primary key, so __eq__ (which
+        # compares by id for saved objects) and this hash remain consistent.
+        return id(self)
 
     @classmethod
     def get_by_slug(cls, slug):
