@@ -2,94 +2,17 @@ from redash.models import Organization, db
 from tests import BaseTestCase
 
 
-class TestOrganizationEquality(BaseTestCase):
-    def test_saved_orgs_with_same_id_are_equal(self):
-        org = self.factory.org
-        same = Organization.get_by_id(org.id)
-        self.assertEqual(org, same)
-
-    def test_saved_orgs_with_different_ids_are_not_equal(self):
-        org1 = self.factory.create_org()
-        org2 = self.factory.create_org()
-        self.assertNotEqual(org1, org2)
-
-    def test_unsaved_org_is_equal_to_itself(self):
-        org = Organization()
-        org.name = "unsaved"
-        org.slug = "unsaved"
-        self.assertEqual(org, org)
-
-    def test_two_distinct_unsaved_orgs_are_not_equal(self):
-        # Both have id=None; equality must fall back to identity, not id comparison.
-        org1 = Organization()
-        org1.name = "a"
-        org1.slug = "a"
-        org2 = Organization()
-        org2.name = "b"
-        org2.slug = "b"
-        self.assertNotEqual(org1, org2)
-
-    def test_org_is_not_equal_to_non_org(self):
-        org = self.factory.org
-        self.assertNotEqual(org, "not an org")
-        self.assertNotEqual(org, None)
-        self.assertNotEqual(org, org.id)
-
-
-class TestOrganizationHash(BaseTestCase):
-    def test_same_object_has_stable_hash(self):
-        # Hash must not change over the object's lifetime — including after
-        # flush/commit assigns a database id.
-        org = self.factory.org
-        h_before = hash(org)
-        db.session.commit()
-        self.assertEqual(hash(org), h_before)
-
-    def test_hash_stable_across_flush(self):
-        # The specific regression: an unsaved org added to a set remains
-        # findable after the session is flushed and id transitions from None.
-        org = Organization()
-        org.name = "flush-test"
-        org.slug = "flush-test"
-        org.settings = {}
-        db.session.add(org)
-        s = {org}
-        db.session.flush()  # assigns org.id
-        self.assertIn(org, s)
-
-    def test_two_distinct_orgs_have_different_hashes(self):
-        org1 = self.factory.create_org()
-        org2 = self.factory.create_org()
-        self.assertNotEqual(hash(org1), hash(org2))
-
-    def test_two_distinct_unsaved_orgs_have_different_hashes(self):
-        org1 = Organization()
-        org1.slug = "x"
-        org2 = Organization()
-        org2.slug = "y"
-        self.assertNotEqual(hash(org1), hash(org2))
-
-    def test_unsaved_orgs_usable_as_dict_keys(self):
-        org1 = Organization()
-        org1.slug = "x"
-        org2 = Organization()
-        org2.slug = "y"
-        d = {org1: "first", org2: "second"}
-        self.assertEqual(d[org1], "first")
-        self.assertEqual(d[org2], "second")
-
-
 class TestOrganizationLookup(BaseTestCase):
     def test_get_by_slug_returns_org(self):
         org = self.factory.org
-        self.assertEqual(Organization.get_by_slug(org.slug), org)
+        self.assertIs(Organization.get_by_slug(org.slug), org)
 
     def test_get_by_slug_returns_none_for_unknown_slug(self):
         self.assertIsNone(Organization.get_by_slug("no-such-slug"))
 
     def test_get_by_id_returns_org(self):
         org = self.factory.org
-        self.assertEqual(Organization.get_by_id(org.id), org)
+        self.assertIs(Organization.get_by_id(org.id), org)
 
 
 class TestOrganizationGroups(BaseTestCase):
@@ -156,8 +79,6 @@ class TestOrganizationSettings(BaseTestCase):
 
     def test_get_setting_returns_default_when_not_overridden(self):
         org = self.factory.org
-        # date_format has a default in org_settings; it should be returned
-        # even without an explicit set_setting call.
         value = org.get_setting("date_format")
         self.assertIsNotNone(value)
 
