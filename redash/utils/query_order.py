@@ -67,7 +67,7 @@ def query_labels(query):
 def get_query_entity_by_alias(query, alias):
     entities = get_query_entities(query)
     if not alias:
-        return entities[0]
+        return entities[0] if entities else None
     for entity in entities:
         if isinstance(entity, sa.orm.util.AliasedClass):
             name = sa.inspect(entity).name

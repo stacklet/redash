@@ -1,9 +1,34 @@
 """Tests for redash.utils.query_order — focusing on get_query_entities and
 the _flatten_joins helper that was added to fix nested-join unwrapping."""
 
+from unittest.mock import patch
+
 from tests import BaseTestCase
 from redash.models import Dashboard, Query, QueryResult, User, db
-from redash.utils.query_order import _flatten_joins, get_query_entities
+from redash.utils.query_order import _flatten_joins, get_query_entities, get_query_entity_by_alias
+
+
+class TestGetQueryEntityByAlias(BaseTestCase):
+    """Tests for get_query_entity_by_alias, particularly the empty-entities guard."""
+
+    def test_returns_none_when_no_alias_and_entities_empty(self):
+        """When alias is falsy and get_query_entities returns [], return None not IndexError."""
+        q = db.session.query(Query)
+        with patch("redash.utils.query_order.get_query_entities", return_value=[]):
+            result = get_query_entity_by_alias(q, None)
+        self.assertIsNone(result)
+
+    def test_returns_first_entity_when_no_alias(self):
+        """When alias is falsy and entities exist, return the first one."""
+        q = db.session.query(Query)
+        result = get_query_entity_by_alias(q, None)
+        self.assertIs(result, Query)
+
+    def test_returns_none_when_alias_not_found(self):
+        """When alias does not match any entity, return None."""
+        q = db.session.query(Query)
+        result = get_query_entity_by_alias(q, "nonexistent_table")
+        self.assertIsNone(result)
 
 
 class TestFlattenJoins(BaseTestCase):
