@@ -79,6 +79,27 @@ def get_query_entity_by_alias(query, alias):
     return None
 
 
+def _flatten_joins(from_objs):
+    """Recursively unwrap Join objects to produce a flat list of leaf FROM items.
+
+    A three-way join ``(A JOIN B) JOIN C`` is represented as a nested structure
+    where the left side of the outer join is itself a ``Join``.  The old
+    single-level loop only extracted the immediate left/right, so the tables
+    inside nested joins were lost.  This recursive version walks the tree fully.
+
+    The recursion is safe: join trees are acyclic and bounded by the number of
+    joined tables, so the depth is always well within Python's recursion limit.
+    """
+    result = []
+    for from_obj in from_objs:
+        if isinstance(from_obj, sa.sql.selectable.Join):
+            result.extend(_flatten_joins([from_obj.left]))
+            result.extend(_flatten_joins([from_obj.right]))
+        else:
+            result.append(from_obj)
+    return result
+
+
 def get_query_entities(query):
     """
     Return a list of all entities present in given SQLAlchemy query object.
@@ -107,14 +128,7 @@ def get_query_entities(query):
         if hasattr(stmt, 'get_final_froms'):
             additional_froms = list(stmt.get_final_froms())
 
-    additional_entities = []
-    for from_obj in additional_froms:
-        if isinstance(from_obj, sa.sql.selectable.Join):
-            # Extract both sides of the join
-            additional_entities.append(from_obj.left)
-            additional_entities.append(from_obj.right)
-        else:
-            additional_entities.append(from_obj)
+    additional_entities = _flatten_joins(additional_froms)
 
     entities = [get_query_entity(expr) for expr in exprs] + [get_query_entity(e) for e in additional_entities]
     result = [e for e in entities if e is not None]

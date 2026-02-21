@@ -681,6 +681,58 @@ class DatabaseCommandTests(BaseTestCase):
         # match, causing is_db_empty to wrongly return True.
         self.assertFalse(result)
 
+    def test_create_tables_commits_ddl_after_rls_setup(self):
+        """DDL for RLS and policies must be committed via db.session.commit().
+
+        SA 2.x does not auto-commit DDL executed through Session.execute().
+        Without an explicit commit, teardown_appcontext calls Session.remove()
+        which rolls back the uncommitted DDL, silently leaving ENABLE ROW LEVEL
+        SECURITY and the two CREATE POLICY statements with no effect.
+        """
+        with mock.patch("redash.cli.database.is_db_empty", return_value=True):
+            with mock.patch("redash.cli.database._wait_for_db_connection"):
+                with mock.patch("redash.cli.database.load_extensions"):
+                    with mock.patch.object(db, "create_all"):
+                        with mock.patch("redash.cli.database.stamp"):
+                            with mock.patch.object(db.session, "execute"):
+                                with mock.patch.object(db.session, "commit") as mock_commit:
+                                    result = CliRunner().invoke(
+                                        manager, ["database", "create_tables"]
+                                    )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        mock_commit.assert_called()
+
+    def test_create_tables_commit_precedes_stamp(self):
+        """Session.commit() must be called before stamp() so that the DDL is
+        durable before the migration version is recorded."""
+        call_order = []
+
+        with mock.patch("redash.cli.database.is_db_empty", return_value=True):
+            with mock.patch("redash.cli.database._wait_for_db_connection"):
+                with mock.patch("redash.cli.database.load_extensions"):
+                    with mock.patch.object(db, "create_all"):
+                        with mock.patch(
+                            "redash.cli.database.stamp",
+                            side_effect=lambda: call_order.append("stamp"),
+                        ):
+                            with mock.patch.object(db.session, "execute"):
+                                with mock.patch.object(
+                                    db.session,
+                                    "commit",
+                                    side_effect=lambda: call_order.append("commit"),
+                                ):
+                                    result = CliRunner().invoke(
+                                        manager, ["database", "create_tables"]
+                                    )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("commit", call_order)
+        self.assertIn("stamp", call_order)
+        commit_pos = call_order.index("commit")
+        stamp_pos = call_order.index("stamp")
+        self.assertLess(commit_pos, stamp_pos, "commit() must be called before stamp()")
+
     def test_create_tables_command_with_existing_tables(self):
         """Test the create_tables CLI command when tables already exist."""
         runner = CliRunner()

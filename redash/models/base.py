@@ -15,11 +15,13 @@ from redash.utils import json_dumps, json_loads, get_schema
 
 class RedashSQLAlchemy(SQLAlchemy):
     def _make_engine(self, bind_key, options, app):
-        # Stacklet customization: Override engine creation to use custom connection logic
-        # See redash.stacklet.auth.get_env_db() for implementation details
-        engine = get_env_db()
-        if engine is not None:
-            return engine
+        # Stacklet customization: Override engine creation to use custom connection logic.
+        # See redash.stacklet.auth.get_env_db() for implementation details.
+        url = options.get("url")
+        if url is not None and str(url).startswith("postgres"):
+            engine = get_env_db()
+            if engine is not None:
+                return engine
         if settings.SQLALCHEMY_DISABLE_POOL:
             # NullPool does not support these options; remove any Flask-SQLAlchemy defaults
             for key in ("pool_size", "max_overflow", "pool_timeout", "pool_recycle"):

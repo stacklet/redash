@@ -37,7 +37,6 @@ class TestTableNameExtraction(BaseTestCase):
 
     def test_select_from_subquery(self):
         """Test table name extraction from a query with a subquery (Alias)."""
-        # Create a subquery - this is what's failing in the e2e tests
         subquery = select(Query.__table__.c.id).subquery()
         query = select(subquery.c.id)
 

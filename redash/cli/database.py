@@ -93,6 +93,7 @@ def create_tables():
             USING (current_user = db_role);
             """)
         )
+        db.session.commit()
 
         # Need to mark current DB as up to date
         stamp()

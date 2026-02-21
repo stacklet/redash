@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import mock
+import sqlalchemy as sa
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.pool import NullPool
 
@@ -73,13 +74,31 @@ class TestMakeEngineNullPool(TestCase):
         self.assertIn("other", seen)
 
     def test_env_engine_returned_without_calling_parent(self):
-        """When get_env_db() returns an engine it must be used directly and the
-        parent _make_engine must not be called (Stacklet custom connection path)."""
+        """When get_env_db() returns an engine for a postgres URL it must be used
+        directly and the parent _make_engine must not be called."""
         mock_engine = mock.MagicMock()
+        # The driver check requires a postgres URL in options.
+        postgres_options = {"url": sa.engine.make_url("postgresql:///test")}
 
         with mock.patch("redash.models.base.get_env_db", return_value=mock_engine):
             with mock.patch.object(SQLAlchemy, "_make_engine") as mock_parent:
-                result = db._make_engine(None, {}, None)
+                result = db._make_engine(None, postgres_options, None)
 
         self.assertIs(result, mock_engine)
         mock_parent.assert_not_called()
+
+    def test_env_engine_not_used_for_non_postgres(self):
+        """get_env_db() must not be called for non-PostgreSQL drivers.
+
+        In development and testing Redash can use SQLite.  The Stacklet custom
+        connection path must not hijack those connections even when get_env_db()
+        would return an engine.
+        """
+        mock_engine = mock.MagicMock()
+        sqlite_options = {"url": sa.engine.make_url("sqlite:///test.db"), "other": "val"}
+
+        with mock.patch("redash.models.base.get_env_db", return_value=mock_engine) as mock_get_env:
+            with mock.patch.object(SQLAlchemy, "_make_engine", return_value=mock.MagicMock()):
+                db._make_engine(None, sqlite_options, None)
+
+        mock_get_env.assert_not_called()
