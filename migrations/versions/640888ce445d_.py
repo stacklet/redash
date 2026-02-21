@@ -110,9 +110,10 @@ def downgrade():
 
     conn = op.get_bind()
     for query in conn.execute(queries.select()):
-        scheduleValue = query.old_schedule["interval"]
-        if scheduleValue <= 86400:
-            scheduleValue = query.old_schedule["time"]
+        schedule = json.loads(query.old_schedule) if query.old_schedule else {}
+        scheduleValue = schedule.get("interval")
+        if scheduleValue is not None and scheduleValue <= 86400:
+            scheduleValue = schedule.get("time")
 
         conn.execute(
             queries.update()

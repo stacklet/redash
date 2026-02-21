@@ -712,3 +712,96 @@ class DatabaseCommandTests(BaseTestCase):
             result = conn.execute(text("SELECT 1;"))
             row = result.fetchone()
             self.assertEqual(row[0], 1)
+
+
+class ReencryptCommandTests(BaseTestCase):
+    """Tests for the reencrypt CLI command and _reencrypt_for_table.
+
+    _reencrypt_for_table was fixed to use SA 2.0-style attribute access
+    (item.id, item.encrypted_options) instead of the removed dict-style
+    access (item["id"], item["encrypted_options"]).
+    """
+
+    def _mock_execute(self, rows):
+        """Return a side_effect callable for db.session.execute.
+
+        Every execute call (SELECT and UPDATE alike) returns a fresh mock
+        whose iterator yields *rows*.  The UPDATE result is never iterated,
+        so reusing the same rows there is harmless.
+        """
+        def execute_fn(*args, **kwargs):
+            result = mock.MagicMock()
+            result.__iter__ = mock.Mock(side_effect=lambda: iter(rows))
+            return result
+        return execute_fn
+
+    def test_reencrypt_uses_attribute_access(self):
+        """_reencrypt_for_table accesses item.id and item.encrypted_options (SA 2.0).
+
+        SA 2.0 Row objects no longer support dict-style access (item["key"]).
+        A namedtuple row is used here because it supports attribute access but
+        raises TypeError on string-keyed subscript access, making the test
+        sensitive to regressions back to item["id"] / item["encrypted_options"].
+        """
+        from collections import namedtuple
+
+        Row = namedtuple("Row", ["id", "encrypted_options"])
+        row = Row(id=1, encrypted_options={"host": "localhost"})
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([row])):
+                with mock.patch.object(db.session, "commit"):
+                    result = CliRunner().invoke(
+                        manager,
+                        ["database", "reencrypt", "old_secret", "new_secret"],
+                    )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception, result.output)
+
+    def test_reencrypt_invalid_token_logs_error_and_skips_item(self):
+        """Items that fail decryption are logged and skipped; the command still succeeds."""
+        from cryptography.fernet import InvalidToken
+
+        class BadRow:
+            id = 99
+
+            @property
+            def encrypted_options(self):
+                raise InvalidToken()
+
+        bad_row = BadRow()
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([bad_row])):
+                with mock.patch.object(db.session, "commit"):
+                    with self.assertLogs(level="ERROR") as log_ctx:
+                        result = CliRunner().invoke(
+                            manager,
+                            ["database", "reencrypt", "old_secret", "new_secret"],
+                        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception, result.output)
+        self.assertTrue(
+            any("Invalid Decryption Key" in m and "99" in m for m in log_ctx.output),
+            f"Expected error log for id=99 but got: {log_ctx.output}",
+        )
+
+    def test_reencrypt_commits_per_table(self):
+        """reencrypt commits once per table (data_sources + notification_destinations)."""
+        from collections import namedtuple
+
+        Row = namedtuple("Row", ["id", "encrypted_options"])
+        row = Row(id=1, encrypted_options={"host": "localhost"})
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([row])):
+                with mock.patch.object(db.session, "commit") as mock_commit:
+                    result = CliRunner().invoke(
+                        manager,
+                        ["database", "reencrypt", "old_secret", "new_secret"],
+                    )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_commit.call_count, 2, "Expected commit() once per table")

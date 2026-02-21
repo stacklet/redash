@@ -9,8 +9,9 @@ Create Date: 2018-01-31 15:20:30.396533
 import json
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
-from redash.models import Dashboard, Widget, db
+from redash.models import db
 
 
 # revision identifiers, used by Alembic.
@@ -24,20 +25,20 @@ def upgrade():
     # Update widgets position data:
     column_size = 3
     print("Updating dashboards position data:")
-    dashboard_result = db.session.execute("SELECT id, layout FROM dashboards")
+    dashboard_result = db.session.execute(text("SELECT id, layout FROM dashboards"))
     for dashboard in dashboard_result:
-        print("  Updating dashboard: {}".format(dashboard["id"]))
-        layout = json.loads(dashboard["layout"])
+        print("  Updating dashboard: {}".format(dashboard.id))
+        layout = json.loads(dashboard.layout)
 
         print("    Building widgets map:")
         widgets = {}
         widget_result = db.session.execute(
-            "SELECT id, options, width FROM widgets WHERE dashboard_id=:dashboard_id",
-            {"dashboard_id": dashboard["id"]},
+            text("SELECT id, options, width FROM widgets WHERE dashboard_id=:dashboard_id"),
+            {"dashboard_id": dashboard.id},
         )
         for w in widget_result:
-            print("    Widget: {}".format(w["id"]))
-            widgets[w["id"]] = w
+            print("    Widget: {}".format(w.id))
+            widgets[w.id] = w
         widget_result.close()
 
         print("    Iterating over layout:")
@@ -53,7 +54,7 @@ def upgrade():
                 if widget is None:
                     continue
 
-                options = json.loads(widget["options"]) or {}
+                options = json.loads(widget.options) or {}
                 options["position"] = {
                     "row": row_index,
                     "col": column_index * column_size,
@@ -61,7 +62,7 @@ def upgrade():
                 }
 
                 db.session.execute(
-                    "UPDATE widgets SET options=:options WHERE id=:id",
+                    text("UPDATE widgets SET options=:options WHERE id=:id"),
                     {"options": json.dumps(options), "id": widget_id},
                 )
 

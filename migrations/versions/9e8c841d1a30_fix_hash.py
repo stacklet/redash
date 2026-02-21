@@ -22,13 +22,13 @@ depends_on = None
 
 
 def update_query_hash(record):
-    should_apply_auto_limit = record['options'].get("apply_auto_limit", False) if record['options'] else False
-    query_runner = get_query_runner(record['type'], {}) if record['type'] else BaseQueryRunner({})
-    query_text = record['query']
+    should_apply_auto_limit = record.options.get("apply_auto_limit", False) if record.options else False
+    query_runner = get_query_runner(record.type, {}) if record.type else BaseQueryRunner({})
+    query_text = record.query
 
-    parameters_dict = {p["name"]: p.get("value") for p in record['options'].get('parameters', [])} if record.options else {}
+    parameters_dict = {p["name"]: p.get("value") for p in record.options.get('parameters', [])} if record.options else {}
     if any(parameters_dict):
-        print(f"Query {record['query_id']} has parameters. Hash might be incorrect.")
+        print(f"Query {record.query_id} has parameters. Hash might be incorrect.")
 
     return query_runner.gen_query_hash(query_text, should_apply_auto_limit)
 
@@ -53,10 +53,10 @@ def upgrade():
 
     for record in conn.execute(query):
         new_hash = update_query_hash(record)
-        print(f"Updating hash for query {record['query_id']} from {record['query_hash']} to {new_hash}")
+        print(f"Updating hash for query {record.query_id} from {record.query_hash} to {new_hash}")
         conn.execute(
             queries.update()
-            .where(queries.c.id == record['query_id'])
+            .where(queries.c.id == record.query_id)
             .values(query_hash=new_hash))
 
 
