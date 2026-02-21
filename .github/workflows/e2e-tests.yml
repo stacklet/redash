@@ -37,7 +37,7 @@ jobs:
                   - type: "section"
                     text:
                       type: "mrkdwn"
-                      text: ${{ toJSON(github.ref_name == 'main' && 'Branch: main' || format('Branch: ⚠️  {0}', github.ref_name)) }}
+                      text: ${{ toJSON(github.ref_name == 'stacklet/integration' && 'Branch: stacklet/integration' || format('Branch: ⚠️  {0}', github.ref_name)) }}
                   - type: "divider"
                   - type: "section"
                     text:
@@ -77,7 +77,7 @@ jobs:
                   - type: "section"
                     text:
                       type: "mrkdwn"
-                      text: ${{ toJSON(github.ref_name == 'main' && 'Branch: main' || format('Branch: ⚠️  {0}', github.ref_name)) }}
+                      text: ${{ toJSON(github.ref_name == 'stacklet/integration' && 'Branch: stacklet/integration' || format('Branch: ⚠️  {0}', github.ref_name)) }}
                   - type: "divider"
                   - type: "section"
                     text:
