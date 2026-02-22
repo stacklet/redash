@@ -1,3 +1,6 @@
+# [Stacklet] This file should be kept as closely in sync with `deploy/internal-redash/Dockerfile` in
+# `redash-infra` as possible.
+
 FROM node:18-bookworm AS frontend-builder
 
 RUN npm install --global --force yarn@1.22.22
@@ -111,7 +114,7 @@ ARG POETRY_OPTIONS="--no-root --no-interaction --no-ansi"
 # disabled by default due to GPL license conflict
 ARG install_groups="main,all_ds,dev"
 RUN /etc/poetry/bin/poetry install --only $install_groups $POETRY_OPTIONS && \
-  pip uninstall -y wheel
+  pip install --upgrade pip virtualenv
 
 COPY --chown=redash . /app
 COPY --from=frontend-builder --chown=redash /frontend/client/dist /app/client/dist
