@@ -346,8 +346,8 @@ class QueryResult(db.Model, BelongsToOrgMixin):
     @classmethod
     def unused(cls, days=7):
         age_threshold = datetime.datetime.now() - datetime.timedelta(days=days)
-        return (cls.query.filter(Query.id.is_(None), cls.retrieved_at < age_threshold).outerjoin(Query)).options(
-            load_only(QueryResult.id)
+        return (cls.query.filter(Query.id.is_(None), cls.retrieved_at < age_threshold).outerjoin(Query)).with_entities(
+            cls.id
         )
 
     @classmethod
@@ -783,9 +783,12 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         db.session.add(query_result)
         if query_result.data_source:
             db.session.add(query_result.data_source)
-            # Add data_source_groups to session to avoid SAWarning during autoflush
-            for dsg in query_result.data_source.data_source_groups:
-                db.session.add(dsg)
+            # Load data_source_groups under no_autoflush to avoid triggering a
+            # flush before the relationship is in the session, which would cause
+            # an SAWarning about DataSourceGroup objects not being in the session.
+            with db.session.no_autoflush:
+                for dsg in query_result.data_source.data_source_groups:
+                    db.session.add(dsg)
         queries = Query.query.filter(
             Query.query_hash == query_result.query_hash,
             Query.data_source == query_result.data_source,
