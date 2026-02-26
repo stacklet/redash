@@ -650,9 +650,15 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                 if query.schedule.get("disabled"):
                     continue
 
-                # Skip queries that have None for all schedule values. It's unclear whether this
-                # something that can happen in practice, but we have a test case for it.
-                if all(value is None for value in query.schedule.values()):
+                # Skip queries with no effective schedule. This covers:
+                # - all values None (unclear if possible in practice, but we have a test for it)
+                # - interval of 0 with no other params set, which the Redash Terraform provider
+                #   sends when no schedule is configured, and which the UI displays as "never".
+                #   Without this check, interval=0 causes timedelta(seconds=0) and the query
+                #   runs on every scheduler tick.
+                # Note: we check all values (not just interval/time) so that a query with only
+                # `until` set still reaches the error-handling path below rather than being silently skipped.
+                if all(not v for v in query.schedule.values()):
                     continue
 
                 if query.schedule.get("until"):

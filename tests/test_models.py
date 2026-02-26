@@ -163,6 +163,18 @@ class QueryOutdatedQueriesTest(BaseTestCase):
         self.assertNotIn(query, queries)
         self.assertNotIn(query_with_none, queries)
 
+    def test_outdated_queries_skips_interval_zero_queries(self):
+        # The Redash Terraform provider sends interval=0 when no schedule is configured.
+        # The UI displays this as "never", but without an explicit skip it would run on
+        # every scheduler tick (timedelta(seconds=0) is always in the past).
+        query = self.factory.create_query(
+            schedule={"interval": 0, "time": None, "until": None, "day_of_week": None}
+        )
+
+        queries = models.Query.outdated_queries()
+
+        self.assertNotIn(query, queries)
+
     def test_outdated_queries_works_with_ttl_based_schedule(self):
         query = self.create_scheduled_query(interval="3600")
         self.fake_previous_execution(query, hours=2)
