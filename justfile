@@ -16,7 +16,7 @@ frontend-install:
 	yarn install --frozen-lockfile
 
 # Run backend tests locally using CI configuration
-backend-test *flags:
+backend-test *flags="tests/":
 	#!/usr/bin/env bash
 	set -euo pipefail
 
@@ -38,7 +38,19 @@ backend-test *flags:
 	docker compose exec postgres psql -U postgres -c "CREATE ROLE limited_visibility NOLOGIN" 2>/dev/null || echo "Role 'limited_visibility' already exists"
 
 	echo "Running tests..."
-	docker compose run --rm redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc {{ flags }} tests/
+	docker compose run --rm redash tests --junitxml=junit.xml --cov-report=xml --cov=redash --cov-config=.coveragerc {{ flags }}
+
+	echo "Cleaning up..."
+	docker compose down -v
+
+cleanup-backend-test:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	export COMPOSE_FILE=.ci/compose.ci.yaml
+	export COMPOSE_PROJECT_NAME=redash
+	export COMPOSE_DOCKER_CLI_BUILD=1
+	export DOCKER_BUILDKIT=1
 
 	echo "Cleaning up..."
 	docker compose down -v

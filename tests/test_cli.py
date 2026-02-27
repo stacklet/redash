@@ -1,9 +1,14 @@
 import textwrap
 
 import mock
+import sqlalchemy
 from click.testing import CliRunner
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.sql import text
 
+from redash import settings
 from redash.cli import manager
+from redash.cli.database import _wait_for_db_connection, is_db_empty, load_extensions
 from redash.models import DataSource, Group, Organization, User, db
 from redash.query_runner import query_runners
 from redash.utils.configuration import ConfigurationContainer
@@ -253,7 +258,7 @@ class GroupCommandTests(BaseTestCase):
 
     def test_change_permissions(self):
         g = self.factory.create_group(permissions=["list_dashboards"])
-        db.session.flush()
+        db.session.commit()
         g_id = g.id
         perms = ["create_query", "edit_query", "view_query"]
         runner = CliRunner()
@@ -338,11 +343,12 @@ class OrganizationCommandTests(BaseTestCase):
         self.assertEqual(self.factory.org.google_apps_domains, domains)
 
     def test_show_google_apps_domains(self):
+        # Re-add org to session since it may have been detached
+        db.session.add(self.factory.org)
         self.factory.org.settings[Organization.SETTING_GOOGLE_APPS_DOMAINS] = [
             "example.org",
             "example.com",
         ]
-        db.session.add(self.factory.org)
         db.session.commit()
         runner = CliRunner()
         result = runner.invoke(manager, ["org", "show_google_apps_domains"])
@@ -566,3 +572,288 @@ class UserCommandTests(BaseTestCase):
         self.assertEqual(result.exit_code, 0)
         db.session.add(u)
         self.assertEqual(u.group_ids, [u.org.default_group.id, u.org.admin_group.id])
+
+
+class DatabaseCommandTests(BaseTestCase):
+    def test_wait_for_db_connection_success(self):
+        """Test that _wait_for_db_connection succeeds when connection is available."""
+        # This should work since we have a test database
+        _wait_for_db_connection(db)
+        # If we get here without exception, the test passed
+
+    def test_wait_for_db_connection_with_success(self):
+        """Test that _wait_for_db_connection succeeds without sleeping on first try."""
+        # Mock time.sleep to verify it's not called on success
+        with mock.patch("time.sleep") as mock_sleep:
+            _wait_for_db_connection(db)
+            # Sleep should not be called on success
+            mock_sleep.assert_not_called()
+
+    def test_wait_for_db_connection_sleeps_on_failure(self):
+        """Test that _wait_for_db_connection sleeps when connection fails."""
+        call_count = [0]
+
+        def mock_connect():
+            call_count[0] += 1
+            raise DatabaseError("Connection failed", None, None)
+
+        # Mock time.sleep to avoid waiting 30 seconds in test
+        with mock.patch("time.sleep") as mock_sleep:
+            with mock.patch.object(db.engine, "connect", side_effect=mock_connect):
+                _wait_for_db_connection(db)
+                # Function attempts connection once, then gives up
+                self.assertEqual(call_count[0], 1)
+                # Should have slept once for 30 seconds
+                mock_sleep.assert_called_once_with(30)
+
+    def test_is_db_empty_with_tables(self):
+        """Test that is_db_empty returns False when tables exist."""
+        # The test database should have tables created
+        result = is_db_empty()
+        self.assertFalse(result)
+
+    def test_is_db_empty_without_tables(self):
+        """Test that is_db_empty returns True when no tables exist."""
+        # Mock the inspector to return no tables
+        with mock.patch("sqlalchemy.inspect") as mock_inspect:
+            mock_inspector = mock.MagicMock()
+            mock_inspector.get_table_names.return_value = []
+            mock_inspect.return_value = mock_inspector
+
+            result = is_db_empty()
+            self.assertTrue(result)
+
+    def test_load_extensions(self):
+        """Test that load_extensions executes CREATE EXTENSION commands."""
+        test_extensions = ["pg_trgm", "hstore"]
+        with mock.patch.object(settings.dynamic_settings, "database_extensions", test_extensions):
+            with mock.patch.object(db.engine, "begin") as mock_begin:
+                mock_conn = mock.MagicMock()
+                mock_begin.return_value.__enter__.return_value = mock_conn
+
+                load_extensions(db)
+
+                self.assertEqual(mock_conn.execute.call_count, len(test_extensions))
+
+    def test_load_extensions_uses_begin_for_autocommit(self):
+        """engine.begin() must be used instead of engine.connect().
+
+        SQLAlchemy 2.0 removed auto-commit from engine.connect(), so DDL
+        executed there is silently rolled back.  engine.begin() commits
+        automatically on success.
+        """
+        test_extensions = ["pg_trgm"]
+        with mock.patch.object(settings.dynamic_settings, "database_extensions", test_extensions):
+            with mock.patch.object(db.engine, "begin") as mock_begin:
+                with mock.patch.object(db.engine, "connect") as mock_connect:
+                    mock_conn = mock.MagicMock()
+                    mock_begin.return_value.__enter__.return_value = mock_conn
+
+                    load_extensions(db)
+
+                    mock_begin.assert_called_once()
+                    mock_connect.assert_not_called()
+
+    def test_is_db_empty_schema_prefix_not_corrupted(self):
+        """removeprefix() must be used so table names are not mangled.
+
+        str.lstrip() treats its argument as a set of characters, not a prefix.
+        With schema "redash", lstrip("redash.") strips any leading character in
+        {'r','e','d','a','s','h','.'}, so "redash.dashboards" -> "boards" and
+        "redash.data_sources" -> "ta_sources".  removeprefix() strips the exact
+        string once, giving the correct bare table names.
+        """
+        fake_tables = {
+            "redash.dashboards": mock.MagicMock(),   # lstrip -> "boards"
+            "redash.data_sources": mock.MagicMock(),  # lstrip -> "ta_sources"
+        }
+        with mock.patch.object(db.metadata, "schema", "redash"):
+            with mock.patch.object(db.metadata, "tables", fake_tables):
+                with mock.patch("sqlalchemy.inspect") as mock_inspect:
+                    mock_inspector = mock.MagicMock()
+                    mock_inspector.get_table_names.return_value = ["dashboards", "data_sources"]
+                    mock_inspect.return_value = mock_inspector
+
+                    result = is_db_empty()
+
+        # Both tables exist; with correct stripping DB is not empty.
+        # With lstrip the names would be "boards"/"ta_sources" which don't
+        # match, causing is_db_empty to wrongly return True.
+        self.assertFalse(result)
+
+    def test_create_tables_commits_ddl_after_rls_setup(self):
+        """DDL for RLS and policies must be committed via db.session.commit().
+
+        SA 2.x does not auto-commit DDL executed through Session.execute().
+        Without an explicit commit, teardown_appcontext calls Session.remove()
+        which rolls back the uncommitted DDL, silently leaving ENABLE ROW LEVEL
+        SECURITY and the two CREATE POLICY statements with no effect.
+        """
+        with mock.patch("redash.cli.database.is_db_empty", return_value=True):
+            with mock.patch("redash.cli.database._wait_for_db_connection"):
+                with mock.patch("redash.cli.database.load_extensions"):
+                    with mock.patch.object(db, "create_all"):
+                        with mock.patch("redash.cli.database.stamp"):
+                            with mock.patch.object(db.session, "execute"):
+                                with mock.patch.object(db.session, "commit") as mock_commit:
+                                    result = CliRunner().invoke(
+                                        manager, ["database", "create_tables"]
+                                    )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        mock_commit.assert_called()
+
+    def test_create_tables_commit_precedes_stamp(self):
+        """Session.commit() must be called before stamp() so that the DDL is
+        durable before the migration version is recorded."""
+        call_order = []
+
+        with mock.patch("redash.cli.database.is_db_empty", return_value=True):
+            with mock.patch("redash.cli.database._wait_for_db_connection"):
+                with mock.patch("redash.cli.database.load_extensions"):
+                    with mock.patch.object(db, "create_all"):
+                        with mock.patch(
+                            "redash.cli.database.stamp",
+                            side_effect=lambda: call_order.append("stamp"),
+                        ):
+                            with mock.patch.object(db.session, "execute"):
+                                with mock.patch.object(
+                                    db.session,
+                                    "commit",
+                                    side_effect=lambda: call_order.append("commit"),
+                                ):
+                                    result = CliRunner().invoke(
+                                        manager, ["database", "create_tables"]
+                                    )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("commit", call_order)
+        self.assertIn("stamp", call_order)
+        commit_pos = call_order.index("commit")
+        stamp_pos = call_order.index("stamp")
+        self.assertLess(commit_pos, stamp_pos, "commit() must be called before stamp()")
+
+    def test_create_tables_command_with_existing_tables(self):
+        """Test the create_tables CLI command when tables already exist."""
+        runner = CliRunner()
+
+        # Mock is_db_empty to return False so we upgrade instead
+        with mock.patch("redash.cli.database.is_db_empty", return_value=False):
+            with mock.patch("redash.cli.database.upgrade") as mock_upgrade:
+                result = runner.invoke(manager, ["database", "create_tables"])
+
+                self.assertEqual(result.exit_code, 0)
+                mock_upgrade.assert_called_once()
+                self.assertIn("existing redash tables detected", result.output)
+
+    def test_drop_tables_command(self):
+        """Test the drop_tables CLI command."""
+        runner = CliRunner()
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db, "drop_all") as mock_drop_all:
+                result = runner.invoke(manager, ["database", "drop_tables"])
+
+                self.assertEqual(result.exit_code, 0)
+                mock_drop_all.assert_called_once()
+
+    def test_sqlalchemy_2x_connection_context(self):
+        """Test that connection context manager works with SQLAlchemy 2.x."""
+        # This tests the pattern used in _wait_for_db_connection
+        with db.engine.connect() as conn:
+            result = conn.execute(text("SELECT 1;"))
+            row = result.fetchone()
+            self.assertEqual(row[0], 1)
+
+
+class ReencryptCommandTests(BaseTestCase):
+    """Tests for the reencrypt CLI command and _reencrypt_for_table.
+
+    _reencrypt_for_table was fixed to use SA 2.0-style attribute access
+    (item.id, item.encrypted_options) instead of the removed dict-style
+    access (item["id"], item["encrypted_options"]).
+    """
+
+    def _mock_execute(self, rows):
+        """Return a side_effect callable for db.session.execute.
+
+        Every execute call (SELECT and UPDATE alike) returns a fresh mock
+        whose iterator yields *rows*.  The UPDATE result is never iterated,
+        so reusing the same rows there is harmless.
+        """
+        def execute_fn(*args, **kwargs):
+            result = mock.MagicMock()
+            result.__iter__ = mock.Mock(side_effect=lambda: iter(rows))
+            return result
+        return execute_fn
+
+    def test_reencrypt_uses_attribute_access(self):
+        """_reencrypt_for_table accesses item.id and item.encrypted_options (SA 2.0).
+
+        SA 2.0 Row objects no longer support dict-style access (item["key"]).
+        A namedtuple row is used here because it supports attribute access but
+        raises TypeError on string-keyed subscript access, making the test
+        sensitive to regressions back to item["id"] / item["encrypted_options"].
+        """
+        from collections import namedtuple
+
+        Row = namedtuple("Row", ["id", "encrypted_options"])
+        row = Row(id=1, encrypted_options={"host": "localhost"})
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([row])):
+                with mock.patch.object(db.session, "commit"):
+                    result = CliRunner().invoke(
+                        manager,
+                        ["database", "reencrypt", "old_secret", "new_secret"],
+                    )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception, result.output)
+
+    def test_reencrypt_invalid_token_logs_error_and_skips_item(self):
+        """Items that fail decryption are logged and skipped; the command still succeeds."""
+        from cryptography.fernet import InvalidToken
+
+        class BadRow:
+            id = 99
+
+            @property
+            def encrypted_options(self):
+                raise InvalidToken()
+
+        bad_row = BadRow()
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([bad_row])):
+                with mock.patch.object(db.session, "commit"):
+                    with self.assertLogs(level="ERROR") as log_ctx:
+                        result = CliRunner().invoke(
+                            manager,
+                            ["database", "reencrypt", "old_secret", "new_secret"],
+                        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception, result.output)
+        self.assertTrue(
+            any("Invalid Decryption Key" in m and "99" in m for m in log_ctx.output),
+            f"Expected error log for id=99 but got: {log_ctx.output}",
+        )
+
+    def test_reencrypt_commits_per_table(self):
+        """reencrypt commits once per table (data_sources + notification_destinations)."""
+        from collections import namedtuple
+
+        Row = namedtuple("Row", ["id", "encrypted_options"])
+        row = Row(id=1, encrypted_options={"host": "localhost"})
+
+        with mock.patch("redash.cli.database._wait_for_db_connection"):
+            with mock.patch.object(db.session, "execute", side_effect=self._mock_execute([row])):
+                with mock.patch.object(db.session, "commit") as mock_commit:
+                    result = CliRunner().invoke(
+                        manager,
+                        ["database", "reencrypt", "old_secret", "new_secret"],
+                    )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_commit.call_count, 2, "Expected commit() once per table")

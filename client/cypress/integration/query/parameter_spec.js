@@ -376,6 +376,8 @@ describe("Parameter", () => {
 
       cy.getByTestId("ParameterApplyButton").click();
 
+      cy.getByTestId("QueryExecutionStatus").should("exist");
+
       cy.getByTestId("TableVisualization").should("contain", dayjs(this.now).format("15/MM/YY"));
     });
 
@@ -387,6 +389,8 @@ describe("Parameter", () => {
         .click();
 
       cy.getByTestId("ParameterApplyButton").click();
+
+      cy.getByTestId("QueryExecutionStatus").should("exist");
 
       cy.getByTestId("TableVisualization").should("contain", dayjs(this.now).format("DD/MM/YY"));
     });

@@ -4,6 +4,8 @@ import os
 from contextlib import contextmanager
 from unittest import TestCase
 
+import flask
+
 os.environ["REDASH_REDIS_URL"] = os.environ.get("REDASH_REDIS_URL", "redis://localhost:6379/0").replace("/0", "/5")
 # Use different url for RQ to avoid DB being cleaned up:
 os.environ["RQ_REDIS_URL"] = os.environ.get("REDASH_REDIS_URL", "redis://localhost:6379/0").replace("/5", "/6")
@@ -51,15 +53,16 @@ class BaseTestCase(TestCase):
         limiter.enabled = False
         self.app_ctx = self.app.app_context()
         self.app_ctx.push()
-        db.session.close()
+
         db.drop_all()
         db.create_all()
+        db.session.commit()
+
         self.factory = Factory()
         self.client = self.app.test_client()
 
     def tearDown(self):
-        db.session.remove()
-        db.get_engine(self.app).dispose()
+        db.engine.dispose()
         self.app_ctx.pop()
         redis_connection.flushdb()
 
@@ -81,6 +84,18 @@ class BaseTestCase(TestCase):
 
         if org is not False:
             path = "/{}{}".format(org.slug, path)
+
+        with self.client.session_transaction() as sess:
+            sess.pop('_user_id', None)
+            sess.pop('_fresh', None)
+
+        db.session.expire_all()
+
+        # Clear Flask-Login's cached user by removing it from flask.g
+        if hasattr(flask.g, '_login_user'):
+            delattr(flask.g, '_login_user')
+        if hasattr(flask.g, 'user'):
+            delattr(flask.g, 'user')
 
         if user:
             authenticate_request(self.client, user)

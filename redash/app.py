@@ -56,4 +56,14 @@ def create_app():
     users.init_app(app)
     tasks.init_app(app)
 
+    # Ensure sessions are properly cleaned up after each request
+    # This is critical for SQLAlchemy 2.0 to avoid idle transactions.
+    # teardown_appcontext is intentionally omitted: Flask-SQLAlchemy 3.x
+    # registers its own teardown_appcontext handler that calls session.remove().
+    @app.teardown_request
+    def shutdown_session_request(exception=None):
+        # Provides earlier cleanup than teardown_appcontext and also covers
+        # test client requests. remove() calls close() then clears the registry.
+        db.session.remove()
+
     return app

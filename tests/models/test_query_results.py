@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import MagicMock, patch
 
 from redash import models
 from redash.utils import utcnow
@@ -47,6 +48,38 @@ class QueryResultTest(BaseTestCase):
         found_query_result = models.QueryResult.get_latest(qr.data_source, qr.query_text, 60)
 
         self.assertEqual(found_query_result.id, qr.id)
+
+    def test_prefilter_preserves_limit_and_offset_for_db_role_user(self):
+        """
+        Verify that prefilter_query_results correctly saves and restores
+        _limit_clause/_offset_clause when injecting the db_role filter.
+        If the save/restore were broken, the limit or offset would be lost
+        and the wrong number of rows (or wrong rows) would be returned.
+        """
+        qr1 = self.factory.create_query_result(db_role="limited")
+        qr2 = self.factory.create_query_result(db_role="limited")
+        qr3 = self.factory.create_query_result(db_role="limited")
+        self.factory.create_query_result()  # no db_role — must be excluded
+
+        mock_user = MagicMock()
+        mock_user.db_role = "limited"
+
+        with patch("redash.models.current_user", mock_user):
+            results = (
+                models.QueryResult.query.order_by(models.QueryResult.id)
+                .limit(2)
+                .offset(1)
+                .all()
+            )
+
+        # limit=2 must be preserved — 3 limited rows exist but only 2 returned
+        self.assertEqual(len(results), 2)
+        # offset=1 must be preserved — qr1 is skipped, qr2 and qr3 returned
+        self.assertNotEqual(results[0].id, qr1.id)
+        self.assertEqual(results[0].id, qr2.id)
+        self.assertEqual(results[1].id, qr3.id)
+        # db_role filter must still be applied
+        self.assertTrue(all(r.db_role == "limited" for r in results))
 
     def test_get_latest_returns_results_per_db_role(self):
         before = utcnow() - datetime.timedelta(seconds=30)

@@ -50,14 +50,13 @@
     "@stacklet/ui": "^0.1.0",
     "ace-builds": "^1.4.12",
     "antd": "^4.4.3",
-    "axios": "0.27.2",
+    "axios": "0.30.3",
     "axios-auth-refresh": "3.3.6",
     "bootstrap": "^3.4.1",
     "classnames": "^2.2.6",
     "d3": "^3.5.17",
     "debug": "^3.2.7",
-    "dompurify": "^2.0.17",
-    "elliptic": "^6.6.0",
+    "dompurify": "^2.4.2",
     "font-awesome": "^4.7.0",
     "history": "^4.10.1",
     "hoist-non-react-statics": "^3.3.0",
@@ -200,5 +199,10 @@
     "and_ff >= 64",
     "and_uc >= 11.8",
     "samsung >= 6.2"
-  ]
+  ],
+  "resolutions": {
+    "form-data": "4.0.4",
+    "elliptic": "6.6.1",
+    "follow-redirects": "1.15.11"
+  }
 }

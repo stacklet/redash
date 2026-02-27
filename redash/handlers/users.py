@@ -1,7 +1,7 @@
 from disposable_email_domains import blacklist
 from flask import request
 from flask_login import current_user, login_user
-from flask_restful import abort
+from flask_restx import abort
 from funcy import partial, project
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound

@@ -31,7 +31,6 @@ from inspect import isclass
 import sqlalchemy as sa
 from sqlalchemy.orm import mapperlib
 from sqlalchemy.orm.properties import ColumnProperty
-from sqlalchemy.orm.query import _ColumnEntity
 from sqlalchemy.orm.util import AliasedInsp
 from sqlalchemy.sql.expression import asc, desc, nullslast
 
@@ -41,7 +40,7 @@ def get_query_descriptor(query, entity, attr):
         return attr
     else:
         entity = get_query_entity_by_alias(query, entity)
-        if entity:
+        if entity is not None:
             descriptor = get_descriptor(entity, attr)
             if hasattr(descriptor, "property") and isinstance(descriptor.property, sa.orm.RelationshipProperty):
                 return
@@ -60,14 +59,15 @@ def query_labels(query):
     :param query: SQLAlchemy Query object
     """
     return [
-        entity._label_name for entity in query._entities if isinstance(entity, _ColumnEntity) and entity._label_name
+        desc['expr'].name for desc in query.column_descriptions
+        if isinstance(desc.get('expr'), sa.sql.elements.Label)
     ]
 
 
 def get_query_entity_by_alias(query, alias):
     entities = get_query_entities(query)
     if not alias:
-        return entities[0]
+        return entities[0] if entities else None
     for entity in entities:
         if isinstance(entity, sa.orm.util.AliasedClass):
             name = sa.inspect(entity).name
@@ -75,6 +75,29 @@ def get_query_entity_by_alias(query, alias):
             name = get_mapper(entity).tables[0].name
         if name == alias:
             return entity
+
+    return None
+
+
+def _flatten_joins(from_objs):
+    """Recursively unwrap Join objects to produce a flat list of leaf FROM items.
+
+    A three-way join ``(A JOIN B) JOIN C`` is represented as a nested structure
+    where the left side of the outer join is itself a ``Join``.  The old
+    single-level loop only extracted the immediate left/right, so the tables
+    inside nested joins were lost.  This recursive version walks the tree fully.
+
+    The recursion is safe: join trees are acyclic and bounded by the number of
+    joined tables, so the depth is always well within Python's recursion limit.
+    """
+    result = []
+    for from_obj in from_objs:
+        if isinstance(from_obj, sa.sql.selectable.Join):
+            result.extend(_flatten_joins([from_obj.left]))
+            result.extend(_flatten_joins([from_obj.right]))
+        else:
+            result.append(from_obj)
+    return result
 
 
 def get_query_entities(query):
@@ -98,7 +121,18 @@ def get_query_entities(query):
         d["expr"] if is_labeled_query(d["expr"]) or isinstance(d["expr"], sa.Column) else d["entity"]
         for d in query.column_descriptions
     ]
-    return [get_query_entity(expr) for expr in exprs] + [get_query_entity(entity) for entity in query._join_entities]
+
+    additional_froms = []
+    if hasattr(query, 'statement'):
+        stmt = query.statement
+        if hasattr(stmt, 'get_final_froms'):
+            additional_froms = list(stmt.get_final_froms())
+
+    additional_entities = _flatten_joins(additional_froms)
+
+    entities = [get_query_entity(expr) for expr in exprs] + [get_query_entity(e) for e in additional_entities]
+    result = [e for e in entities if e is not None]
+    return result
 
 
 def is_labeled_query(expr):
@@ -114,6 +148,12 @@ def get_query_entity(expr):
         return expr.table
     elif isinstance(expr, AliasedInsp):
         return expr.entity
+    elif isinstance(expr, sa.Table):
+        try:
+            mapper = get_mapper(expr)
+            return mapper.class_
+        except Exception:
+            return expr
     return expr
 
 
@@ -133,12 +173,10 @@ def get_mapper(mixed):
         ValueError: if multiple mappers were found for given argument
     .. versionadded: 0.26.1
     """
-    if isinstance(mixed, sa.orm.query._MapperEntity):
-        mixed = mixed.expr
-    elif isinstance(mixed, sa.Column):
+    if isinstance(mixed, sa.sql.selectable.Join):
+        mixed = mixed.right
+    if isinstance(mixed, sa.Column):
         mixed = mixed.table
-    elif isinstance(mixed, sa.orm.query._ColumnEntity):
-        mixed = mixed.expr
     if isinstance(mixed, sa.orm.Mapper):
         return mixed
     if isinstance(mixed, sa.orm.util.AliasedClass):
@@ -150,7 +188,12 @@ def get_mapper(mixed):
     if isinstance(mixed, sa.orm.attributes.InstrumentedAttribute):
         mixed = mixed.class_
     if isinstance(mixed, sa.Table):
-        mappers = [mapper for mapper in mapperlib._mapper_registry if mixed in mapper.tables]
+        mappers = []
+        for reg in mapperlib._mapper_registries.keys():
+            for mapper in reg.mappers:
+                if mixed in mapper.tables:
+                    mappers.append(mapper)
+
         if len(mappers) > 1:
             raise ValueError("Multiple mappers found for table '%s'." % mixed.name)
         elif not mappers:

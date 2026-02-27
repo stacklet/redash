@@ -3,7 +3,7 @@ from inspect import isclass
 
 from flask import Blueprint, current_app, request
 from flask_login import current_user, login_required
-from flask_restful import Resource, abort
+from flask_restx import Resource, abort
 from sqlalchemy import cast
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm.exc import NoResultFound
@@ -100,7 +100,7 @@ def paginate(query_set, page, page_size, serializer, **kwargs):
     if page_size > 250 or page_size < 1:
         abort(400, message="Page size is out of range (1-250).")
 
-    results = query_set.paginate(page, page_size)
+    results = query_set.paginate(page=page, per_page=page_size, max_per_page=page_size)
 
     # support for old function based serializers
     if isclass(serializer):

@@ -5,7 +5,7 @@ import numbers
 import time
 
 import pytz
-from sqlalchemy import UniqueConstraint, and_, cast, distinct, func, or_
+from sqlalchemy import UniqueConstraint, and_, bindparam, cast, distinct, func, or_, text
 from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB
 from flask_login import current_user
 from sqlalchemy.event import listens_for
@@ -37,7 +37,6 @@ from redash.models.base import (
     gfk_type,
     key_type,
     primary_key,
-    BaseQuery,
 )
 from redash.models.changes import Change, ChangeTrackingMixin  # noqa
 from redash.models.mixins import BelongsToOrgMixin, TimestampMixin
@@ -176,9 +175,12 @@ class DataSource(BelongsToOrgMixin, db.Model):
 
     @classmethod
     def create_with_group(cls, *args, **kwargs):
-        data_source = cls(*args, **kwargs)
-        data_source_group = DataSourceGroup(data_source=data_source, group=data_source.org.default_group)
-        db.session.add_all([data_source, data_source_group])
+        with db.session.no_autoflush:
+            org = kwargs.get('org')
+            data_source = cls(*args, **kwargs)
+            default_group = org.default_group if org else data_source.org.default_group
+            data_source_group = DataSourceGroup(data_source=data_source, group=default_group)
+            db.session.add_all([data_source, data_source_group])
         return data_source
 
     @classmethod
@@ -257,6 +259,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
         redis_connection.delete(self._pause_key)
 
     def add_group(self, group, view_only=False):
+        db.session.add(self)
         dsg = DataSourceGroup(group=group, data_source=self, view_only=view_only)
         db.session.add(dsg)
         return dsg
@@ -343,8 +346,8 @@ class QueryResult(db.Model, BelongsToOrgMixin):
     @classmethod
     def unused(cls, days=7):
         age_threshold = datetime.datetime.now() - datetime.timedelta(days=days)
-        return (cls.query.filter(Query.id.is_(None), cls.retrieved_at < age_threshold).outerjoin(Query)).options(
-            load_only("id")
+        return (cls.query.filter(Query.id.is_(None), cls.retrieved_at < age_threshold).outerjoin(Query)).with_entities(
+            cls.id
         )
 
     @classmethod
@@ -401,7 +404,7 @@ class QueryResult(db.Model, BelongsToOrgMixin):
         return self.data_source.groups
 
 
-@listens_for(BaseQuery, "before_compile", retval=True)
+@listens_for(SearchBaseQuery, "before_compile", retval=True)
 def prefilter_query_results(query):
     """
     Ensure that a user with a db_role defined can only see QueryResults that
@@ -421,10 +424,9 @@ def prefilter_query_results(query):
             db_role = getattr(current_user, "db_role", None)
             if not db_role:
                 continue
-            limit = query._limit
-            offset = query._offset
+            limit = query._limit_clause
+            offset = query._offset_clause
             query = query.limit(None).offset(None)
-            query.offset(None)
             query = query.filter(desc['entity'].db_role == db_role)
             query = query.limit(limit).offset(offset)
     return query
@@ -571,15 +573,15 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
             .filter(DataSourceGroup.group_id.in_(group_ids))
         )
         queries = (
-            cls.query.options(
-                joinedload(Query.user),
-                joinedload(Query.latest_query_data).load_only("runtime", "retrieved_at"),
-            )
+            cls.query
             .filter(cls.id.in_(query_ids))
             # Adding outer joins to be able to order by relationship
             .outerjoin(User, User.id == Query.user_id)
             .outerjoin(QueryResult, QueryResult.id == Query.latest_query_data_id)
-            .options(contains_eager(Query.user), contains_eager(Query.latest_query_data))
+            .options(
+                contains_eager(Query.user),
+                contains_eager(Query.latest_query_data).load_only(QueryResult.runtime, QueryResult.retrieved_at)
+            )
         )
 
         if not include_drafts:
@@ -591,10 +593,8 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         if base_query is None:
             base_query = cls.all_queries(user.group_ids, user.id, include_drafts=True)
         return base_query.join(
-            (
-                Favorite,
-                and_(Favorite.object_type == "Query", Favorite.object_id == Query.id),
-            )
+            Favorite,
+            and_(Favorite.object_type == "Query", Favorite.object_id == Query.id),
         ).filter(Favorite.user_id == user.id)
 
     @classmethod
@@ -607,7 +607,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         query = (
             db.session.query(tag_column, usage_count)
             .group_by(tag_column)
-            .filter(Query.id.in_(queries.options(load_only("id"))))
+            .filter(Query.id.in_(queries.with_entities(Query.id)))
             .order_by(usage_count.desc())
         )
         return query
@@ -635,7 +635,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     @classmethod
     def outdated_queries(cls):
         queries = (
-            Query.query.options(joinedload(Query.latest_query_data).load_only("retrieved_at"))
+            Query.query.options(joinedload(Query.latest_query_data).load_only(QueryResult.retrieved_at))
             .filter(func.jsonb_typeof(Query.schedule) != "null")
             .order_by(Query.id)
             .all()
@@ -650,9 +650,15 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                 if query.schedule.get("disabled"):
                     continue
 
-                # Skip queries that have None for all schedule values. It's unclear whether this
-                # something that can happen in practice, but we have a test case for it.
-                if all(value is None for value in query.schedule.values()):
+                # Skip queries with no effective schedule. This covers:
+                # - all values None (unclear if possible in practice, but we have a test for it)
+                # - interval of 0 with no other params set, which the Redash Terraform provider
+                #   sends when no schedule is configured, and which the UI displays as "never".
+                #   Without this check, interval=0 causes timedelta(seconds=0) and the query
+                #   runs on every scheduler tick.
+                # Note: we check all values (not just interval/time) so that a query with only
+                # `until` set still reaches the error-handling path below rather than being silently skipped.
+                if all(not v for v in query.schedule.values()):
                     continue
 
                 if query.schedule.get("until"):
@@ -772,11 +778,23 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                    JOIN {schema_prefix}data_source_groups ON {schema_prefix}queries.data_source_id = {schema_prefix}data_source_groups.data_source_id
                    WHERE {schema_prefix}queries.id in :ids"""
 
-        return db.session.execute(query, {"ids": tuple(query_ids)}).fetchall()
+        return db.session.execute(
+            text(query).bindparams(bindparam("ids", expanding=True)),
+            {"ids": list(query_ids)},
+        ).fetchall()
 
     @classmethod
     def update_latest_result(cls, query_result):
         # TODO: Investigate how big an impact this select-before-update makes.
+        db.session.add(query_result)
+        if query_result.data_source:
+            db.session.add(query_result.data_source)
+            # Load data_source_groups under no_autoflush to avoid triggering a
+            # flush before the relationship is in the session, which would cause
+            # an SAWarning about DataSourceGroup objects not being in the session.
+            with db.session.no_autoflush:
+                for dsg in query_result.data_source.data_source_groups:
+                    db.session.add(dsg)
         queries = Query.query.filter(
             Query.query_hash == query_result.query_hash,
             Query.data_source == query_result.data_source,
@@ -863,7 +881,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
         select = "SELECT api_keys.api_key"
         if settings.SQLALCHEMY_DATABASE_SCHEMA:
             select = "SELECT api_key"
-            db.session.execute(f"SET search_path to {settings.SQLALCHEMY_DATABASE_SCHEMA}")
+            db.session.execute(text(f"SET search_path to {settings.SQLALCHEMY_DATABASE_SCHEMA}"))
         query = f"""{select}
                    FROM api_keys
                    JOIN dashboards ON object_id = dashboards.id
@@ -873,7 +891,7 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
                      AND active=true
                      AND visualizations.query_id = :id"""
 
-        api_keys = db.session.execute(query, {"id": self.id}).fetchall()
+        api_keys = db.session.execute(text(query), {"id": self.id}).fetchall()
         return [api_key[0] for api_key in api_keys]
 
     def update_query_hash(self):
@@ -1154,7 +1172,7 @@ class Dashboard(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model
     @classmethod
     def all(cls, org, group_ids, user_id):
         query = (
-            Dashboard.query.options(joinedload(Dashboard.user).load_only("id", "name", "details", "email"))
+            Dashboard.query.options(joinedload(Dashboard.user).load_only(User.id, User.name, User.details, User.email))
             .distinct(cls.lowercase_name, Dashboard.created_at, Dashboard.slug)
             .outerjoin(Widget)
             .outerjoin(Visualization)
@@ -1190,7 +1208,7 @@ class Dashboard(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model
         query = (
             db.session.query(tag_column, usage_count)
             .group_by(tag_column)
-            .filter(Dashboard.id.in_(dashboards.options(load_only("id"))))
+            .filter(Dashboard.id.in_(dashboards.with_entities(Dashboard.id)))
             .order_by(usage_count.desc())
         )
         return query
@@ -1200,13 +1218,11 @@ class Dashboard(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model
         if base_query is None:
             base_query = cls.all(user.org, user.group_ids, user.id)
         return base_query.join(
-            (
-                Favorite,
-                and_(
-                    Favorite.object_type == "Dashboard",
-                    Favorite.object_id == Dashboard.id,
-                ),
-            )
+            Favorite,
+            and_(
+                Favorite.object_type == "Dashboard",
+                Favorite.object_id == Dashboard.id,
+            ),
         ).filter(Favorite.user_id == user.id)
 
     @classmethod

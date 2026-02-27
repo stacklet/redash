@@ -197,13 +197,16 @@ class Factory:
 
     def create_org(self, **kwargs):
         org = org_factory.create(**kwargs)
-        self.create_group(org=org, type=redash.models.Group.BUILTIN_GROUP, name="default")
-        self.create_group(
+        default_group = self.create_group(org=org, type=redash.models.Group.BUILTIN_GROUP, name="default")
+        admin_group = self.create_group(
             org=org,
             type=redash.models.Group.BUILTIN_GROUP,
             name="admin",
             permissions=["admin"],
         )
+        db.session.add(default_group)
+        db.session.add(admin_group)
+        db.session.commit()
 
         return org
 
@@ -211,7 +214,15 @@ class Factory:
         args = {"org": self.org, "group_ids": [self.default_group.id]}
 
         if "org" in kwargs:
-            args["group_ids"] = [kwargs["org"].default_group.id]
+            org = kwargs["org"]
+            default_group = redash.models.Group.query.filter(
+                redash.models.Group.org_id == org.id,
+                redash.models.Group.name == "default",
+                redash.models.Group.type == redash.models.Group.BUILTIN_GROUP
+            ).first()
+            if not default_group:
+                raise ValueError(f"Default group not found for org {org.id}. Groups may not have been committed.")
+            args["group_ids"] = [default_group.id]
 
         args.update(kwargs)
         return user_factory.create(**args)
@@ -223,9 +234,22 @@ class Factory:
         }
 
         if "org" in kwargs:
+            org = kwargs["org"]
+            default_group = redash.models.Group.query.filter(
+                redash.models.Group.org_id == org.id,
+                redash.models.Group.name == "default",
+                redash.models.Group.type == redash.models.Group.BUILTIN_GROUP
+            ).first()
+            admin_group = redash.models.Group.query.filter(
+                redash.models.Group.org_id == org.id,
+                redash.models.Group.name == "admin",
+                redash.models.Group.type == redash.models.Group.BUILTIN_GROUP
+            ).first()
+            if not default_group or not admin_group:
+                raise ValueError(f"Groups not found for org {org.id}. Groups may not have been committed.")
             args["group_ids"] = [
-                kwargs["org"].default_group.id,
-                kwargs["org"].admin_group.id,
+                default_group.id,
+                admin_group.id,
             ]
 
         args.update(kwargs)
@@ -237,6 +261,7 @@ class Factory:
         args.update(kwargs)
 
         g = redash.models.Group(**args)
+        db.session.add(g)
         return g
 
     def create_alert(self, **kwargs):

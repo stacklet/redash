@@ -47,6 +47,16 @@ class PingTest(BaseTestCase):
         self.assertEqual(b"PONG.", rv.data)
 
 
+class SwaggerTest(BaseTestCase):
+    def test_swagger_json_not_exposed(self):
+        rv = self.client.get("/swagger.json")
+        self.assertNotEqual(200, rv.status_code)
+
+    def test_swagger_ui_not_exposed(self):
+        rv = self.client.get("/")
+        self.assertNotEqual(200, rv.status_code)
+
+
 class IndexTest(BaseTestCase):
     def setUp(self):
         self.paths = [
@@ -282,6 +292,7 @@ class TestQuerySnippet(BaseTestCase):
             project(res.json, ["id", "trigger", "description", "snippet"]),
             {"id": 1, "trigger": "x", "description": "y", "snippet": "z"},
         )
+        qs = models.db.session.get(models.QuerySnippet, 1)
         self.assertEqual(qs.trigger, "x")
         self.assertEqual(qs.description, "y")
         self.assertEqual(qs.snippet, "z")

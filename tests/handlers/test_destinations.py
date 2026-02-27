@@ -7,7 +7,7 @@ from redash.destinations.datadog import Datadog
 from redash.destinations.discord import Discord
 from redash.destinations.slack import Slack
 from redash.destinations.webex import Webex
-from redash.models import Alert, NotificationDestination
+from redash.models import Alert, NotificationDestination, db
 from tests import BaseTestCase
 
 
@@ -72,7 +72,7 @@ class TestDestinationResource(BaseTestCase):
             user=self.factory.create_admin(),
         )
         self.assertEqual(rv.status_code, 204)
-        self.assertIsNone(NotificationDestination.query.get(d.id))
+        self.assertIsNone(db.session.get(NotificationDestination, d.id))
 
     def test_post(self):
         d = self.factory.create_destination()
@@ -82,17 +82,16 @@ class TestDestinationResource(BaseTestCase):
             "options": {"url": "https://www.slack.com/updated"},
         }
 
-        with self.app.app_context():
-            rv = self.make_request(
-                "post",
-                "/api/destinations/{}".format(d.id),
-                user=self.factory.create_admin(),
-                data=data,
-            )
+        rv = self.make_request(
+            "post",
+            "/api/destinations/{}".format(d.id),
+            user=self.factory.create_admin(),
+            data=data,
+        )
 
         self.assertEqual(rv.status_code, 200)
 
-        d = NotificationDestination.query.get(d.id)
+        d = db.session.get(NotificationDestination, d.id)
         self.assertEqual(d.name, data["name"])
         self.assertEqual(d.options["url"], data["options"]["url"])
 

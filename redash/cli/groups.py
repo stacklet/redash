@@ -2,7 +2,6 @@ from sys import exit
 
 from click import argument, option
 from flask.cli import AppGroup
-from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models
 
@@ -57,9 +56,8 @@ def create(name, permissions=None, organization="default"):
 def change_permissions(group_id, permissions=None):
     print("Change permissions of group %s ..." % group_id)
 
-    try:
-        group = models.Group.query.get(group_id)
-    except NoResultFound:
+    group = models.db.session.get(models.Group, group_id)
+    if group is None:
         print("Group [%s] not found." % group_id)
         exit(1)
 

@@ -13,15 +13,15 @@ from tests import BaseTestCase
 class DashboardTest(BaseTestCase):
     def test_appends_suffix_to_slug_when_duplicate(self):
         d1 = self.factory.create_dashboard()
-        db.session.flush()
+        db.session.commit()
         self.assertEqual(d1.slug, "test")
 
         d2 = self.factory.create_dashboard(user=d1.user)
-        db.session.flush()
+        db.session.commit()
         self.assertNotEqual(d1.slug, d2.slug)
 
         d3 = self.factory.create_dashboard(user=d1.user)
-        db.session.flush()
+        db.session.commit()
         self.assertNotEqual(d1.slug, d3.slug)
         self.assertNotEqual(d2.slug, d3.slug)
 
@@ -162,6 +162,18 @@ class QueryOutdatedQueriesTest(BaseTestCase):
 
         self.assertNotIn(query, queries)
         self.assertNotIn(query_with_none, queries)
+
+    def test_outdated_queries_skips_interval_zero_queries(self):
+        # The Redash Terraform provider sends interval=0 when no schedule is configured.
+        # The UI displays this as "never", but without an explicit skip it would run on
+        # every scheduler tick (timedelta(seconds=0) is always in the past).
+        query = self.factory.create_query(
+            schedule={"interval": 0, "time": None, "until": None, "day_of_week": None}
+        )
+
+        queries = models.Query.outdated_queries()
+
+        self.assertNotIn(query, queries)
 
     def test_outdated_queries_works_with_ttl_based_schedule(self):
         query = self.create_scheduled_query(interval="3600")
@@ -329,7 +341,7 @@ class QueryOutdatedQueriesTest(BaseTestCase):
 class QueryArchiveTest(BaseTestCase):
     def test_archive_query_sets_flag(self):
         query = self.factory.create_query()
-        db.session.flush()
+        db.session.commit()
         query.archive()
 
         self.assertEqual(query.is_archived, True)
@@ -352,7 +364,7 @@ class QueryArchiveTest(BaseTestCase):
         groups = list(models.Group.query.filter(models.Group.id.in_(query.groups)))
         self.assertIn(query, list(models.Query.all_queries([g.id for g in groups])))
         self.assertIn(query, models.Query.outdated_queries())
-        db.session.flush()
+        db.session.commit()
         query.archive()
 
         self.assertNotIn(query, list(models.Query.all_queries([g.id for g in groups])))
@@ -363,8 +375,8 @@ class QueryArchiveTest(BaseTestCase):
         query = widget.visualization.query_rel
         db.session.commit()
         query.archive()
-        db.session.flush()
-        self.assertEqual(models.Widget.query.get(widget.id), None)
+        db.session.commit()
+        self.assertEqual(models.db.session.get(models.Widget, widget.id), None)
 
     def test_removes_scheduling(self):
         query = self.factory.create_query(schedule={"interval": "1", "until": None, "time": None, "day_of_week": None})
@@ -378,9 +390,9 @@ class QueryArchiveTest(BaseTestCase):
         query = subscription.alert.query_rel
         db.session.commit()
         query.archive()
-        db.session.flush()
-        self.assertEqual(models.Alert.query.get(subscription.alert.id), None)
-        self.assertEqual(models.AlertSubscription.query.get(subscription.id), None)
+        db.session.commit()
+        self.assertEqual(models.db.session.get(models.Alert, subscription.alert.id), None)
+        self.assertEqual(models.db.session.get(models.AlertSubscription, subscription.id), None)
 
 
 class TestUnusedQueryResults(BaseTestCase):
@@ -388,19 +400,21 @@ class TestUnusedQueryResults(BaseTestCase):
         two_weeks_ago = utcnow() - datetime.timedelta(days=14)
         qr = self.factory.create_query_result()
         self.factory.create_query(latest_query_data=qr)
-        db.session.flush()
+        db.session.commit()
         unused_qr = self.factory.create_query_result(retrieved_at=two_weeks_ago)
-        self.assertIn(unused_qr, list(models.QueryResult.unused()))
-        self.assertNotIn(qr, list(models.QueryResult.unused()))
+        unused_ids = [row.id for row in models.QueryResult.unused()]
+        self.assertIn(unused_qr.id, unused_ids)
+        self.assertNotIn(qr.id, unused_ids)
 
     def test_returns_only_over_a_week_old_results(self):
         two_weeks_ago = utcnow() - datetime.timedelta(days=14)
         unused_qr = self.factory.create_query_result(retrieved_at=two_weeks_ago)
-        db.session.flush()
+        db.session.commit()
         new_unused_qr = self.factory.create_query_result()
 
-        self.assertIn(unused_qr, list(models.QueryResult.unused()))
-        self.assertNotIn(new_unused_qr, list(models.QueryResult.unused()))
+        unused_ids = [row.id for row in models.QueryResult.unused()]
+        self.assertIn(unused_qr.id, unused_ids)
+        self.assertNotIn(new_unused_qr.id, unused_ids)
 
 
 class TestQueryAll(BaseTestCase):
@@ -408,8 +422,8 @@ class TestQueryAll(BaseTestCase):
         ds1 = self.factory.create_data_source()
         ds2 = self.factory.create_data_source()
 
-        group1 = models.Group(name="g1", org=ds1.org, permissions=["create", "view"])
-        group2 = models.Group(name="g2", org=ds1.org, permissions=["create", "view"])
+        group1 = models.Group(name="g1", org_id=ds1.org_id, permissions=["create", "view"])
+        group2 = models.Group(name="g2", org_id=ds1.org_id, permissions=["create", "view"])
 
         q1 = self.factory.create_query(data_source=ds1)
         q2 = self.factory.create_query(data_source=ds2)
@@ -426,7 +440,7 @@ class TestQueryAll(BaseTestCase):
                 models.DataSourceGroup(group=group2, data_source=ds2),
             ]
         )
-        db.session.flush()
+        db.session.commit()
         self.assertIn(q1, list(models.Query.all_queries([group1.id])))
         self.assertNotIn(q2, list(models.Query.all_queries([group1.id])))
         self.assertIn(q1, list(models.Query.all_queries([group1.id, group2.id])))
@@ -499,6 +513,9 @@ class TestGroup(BaseTestCase):
         matching_group2 = models.Group(id=888, name="g2", org=org1)
         non_matching_group = models.Group(id=777, name="g1", org=org2)
 
+        models.db.session.add_all([matching_group1, matching_group2, non_matching_group])
+        models.db.session.commit()
+
         groups = models.Group.find_by_name(org1, ["g1", "g2"])
         self.assertIn(matching_group1, groups)
         self.assertIn(matching_group2, groups)
@@ -507,7 +524,9 @@ class TestGroup(BaseTestCase):
     def test_returns_no_groups(self):
         org1 = self.factory.create_org()
 
-        models.Group(id=999, name="g1", org=org1)
+        group = models.Group(id=999, name="g1", org=org1)
+        models.db.session.add(group)
+        models.db.session.commit()
         self.assertEqual([], models.Group.find_by_name(org1, ["non-existing"]))
 
 
@@ -546,7 +565,7 @@ class TestEvents(BaseTestCase):
         timestamp = 1411778709.791
         user = self.factory.user
         created_at = datetime.datetime.utcfromtimestamp(timestamp)
-        db.session.flush()
+        db.session.commit()
         raw_event = {
             "action": "view",
             "timestamp": timestamp,
@@ -562,7 +581,7 @@ class TestEvents(BaseTestCase):
         raw_event, user, created_at = self.raw_event()
 
         event = models.Event.record(raw_event)
-        db.session.flush()
+        db.session.commit()
         self.assertEqual(event.user, user)
         self.assertEqual(event.action, "view")
         self.assertEqual(event.object_type, "dashboard")
@@ -584,7 +603,7 @@ def _set_up_dashboard_test(d):
     d.g2 = d.factory.create_group(name="Second", permissions=["create", "view"])
     d.ds1 = d.factory.create_data_source()
     d.ds2 = d.factory.create_data_source()
-    db.session.flush()
+    db.session.commit()
     d.u1 = d.factory.create_user(group_ids=[d.g1.id])
     d.u2 = d.factory.create_user(group_ids=[d.g2.id])
     db.session.add_all(
@@ -648,7 +667,7 @@ class TestDashboardAll(BaseTestCase):
 
     def test_returns_dashboards_created_by_user(self):
         d1 = self.factory.create_dashboard(user=self.u1)
-        db.session.flush()
+        db.session.commit()
         self.assertIn(d1, list(models.Dashboard.all(self.u1.org, self.u1.group_ids, self.u1.id)))
         self.assertIn(d1, list(models.Dashboard.all(self.u1.org, [0], self.u1.id)))
         self.assertNotIn(d1, list(models.Dashboard.all(self.u2.org, self.u2.group_ids, self.u2.id)))

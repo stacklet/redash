@@ -9,6 +9,7 @@ export const axios = axiosLib.create({
   paramsSerializer: params => qs.stringify(params),
   xsrfCookieName: "csrf_token",
   xsrfHeaderName: "X-CSRF-TOKEN",
+  withXSRFToken: config => !config.url.startsWith("http"), // axios 0.28+ made this opt-in (CVE-2023-45857); only send for same-origin (relative) URLs
 });
 
 axios.interceptors.response.use(response => response.data);

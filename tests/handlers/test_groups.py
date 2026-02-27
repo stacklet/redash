@@ -8,7 +8,7 @@ class TestGroupDataSourceListResource(BaseTestCase):
     def test_returns_only_groups_for_current_org(self):
         group = self.factory.create_group(org=self.factory.create_org())
         self.factory.create_data_source(group=group)
-        db.session.flush()
+        db.session.commit()
         response = self.make_request(
             "get",
             "/api/groups/{}/data_sources".format(group.id),
@@ -19,7 +19,7 @@ class TestGroupDataSourceListResource(BaseTestCase):
     def test_list(self):
         group = self.factory.create_group()
         ds = self.factory.create_data_source(group=group)
-        db.session.flush()
+        db.session.commit()
         response = self.make_request(
             "get",
             "/api/groups/{}/data_sources".format(group.id),
@@ -46,9 +46,9 @@ class TestGroupResourceList(BaseTestCase):
 
     def test_list(self):
         group1 = self.factory.create_group(org=self.factory.create_org(), permissions=["view_dashboard"])
-        db.session.flush()
+        db.session.commit()
         u = self.factory.create_user(group_ids=[self.factory.default_group.id, group1.id])
-        db.session.flush()
+        db.session.commit()
         response = self.make_request("get", "/api/groups", user=u)
         g_keys = ["type", "id", "name", "permissions"]
 
@@ -73,7 +73,7 @@ class TestGroupResourcePost(BaseTestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(current_name, Group.query.get(self.factory.default_group.id).name)
+        self.assertEqual(current_name, db.session.get(Group, self.factory.default_group.id).name)
 
 
 class TestGroupResourceDelete(BaseTestCase):
@@ -89,7 +89,7 @@ class TestGroupResourceDelete(BaseTestCase):
             user=self.factory.create_admin(),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(Group.query.get(group.id))
+        self.assertIsNone(db.session.get(Group, group.id))
 
     def test_cant_delete_builtin_group(self):
         for group in [self.factory.default_group, self.factory.admin_group]:
@@ -112,7 +112,7 @@ class TestGroupResourceDelete(BaseTestCase):
 
         self.assertEqual(response.status_code, 200)
 
-        self.assertEqual(data_source, DataSource.query.get(data_source.id))
+        self.assertEqual(data_source, db.session.get(DataSource, data_source.id))
 
 
 class TestGroupResourceGet(BaseTestCase):

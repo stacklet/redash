@@ -35,7 +35,7 @@ class TestApiKeyAuthentication(BaseTestCase):
         super(TestApiKeyAuthentication, self).setUp()
         self.api_key = "10"
         self.query = self.factory.create_query(api_key=self.api_key)
-        models.db.session.flush()
+        models.db.session.commit()
         self.query_url = "/{}/api/queries/{}".format(self.factory.org.slug, self.query.id)
         self.queries_url = "/{}/api/queries".format(self.factory.org.slug)
 
@@ -61,7 +61,7 @@ class TestApiKeyAuthentication(BaseTestCase):
 
     def test_user_api_key(self):
         user = self.factory.create_user(api_key="user_key")
-        models.db.session.flush()
+        models.db.session.commit()
         with self.app.test_client() as c:
             c.get(self.queries_url, query_string={"api_key": user.api_key})
             self.assertEqual(user.id, api_key_load_user_from_request(request).id)
@@ -69,7 +69,7 @@ class TestApiKeyAuthentication(BaseTestCase):
     def test_disabled_user_api_key(self):
         user = self.factory.create_user(api_key="user_key")
         user.disable()
-        models.db.session.flush()
+        models.db.session.commit()
         with self.app.test_client() as c:
             c.get(self.queries_url, query_string={"api_key": user.api_key})
             self.assertEqual(None, api_key_load_user_from_request(request))
@@ -103,7 +103,7 @@ class TestHMACAuthentication(BaseTestCase):
         super(TestHMACAuthentication, self).setUp()
         self.api_key = "10"
         self.query = self.factory.create_query(api_key=self.api_key)
-        models.db.session.flush()
+        models.db.session.commit()
         self.path = "/{}/api/queries/{}".format(self.query.org.slug, self.query.id)
         self.expires = time.time() + 1800
 
@@ -145,7 +145,7 @@ class TestHMACAuthentication(BaseTestCase):
     def test_user_api_key(self):
         user = self.factory.create_user(api_key="user_key")
         path = "/api/queries/"
-        models.db.session.flush()
+        models.db.session.commit()
 
         signature = sign(user.api_key, path, self.expires)
         with self.app.test_client() as c:
@@ -167,7 +167,7 @@ class TestSessionAuthentication(BaseTestCase):
 
         other_org = self.factory.create_org()
         other_user = self.factory.create_user(org=other_org)
-        models.db.session.flush()
+        models.db.session.commit()
 
         rv = self.make_request(
             "get",
@@ -343,7 +343,7 @@ class TestRemoteUserAuth(BaseTestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user.email, email)
         self.assertEqual(user.name, name)
-        self.assertEqual(user.org, org or self.factory.org)
+        self.assertEqual(user.org_id, (org or self.factory.org).id)
         self.assertCountEqual(user.group_ids, groups)
 
     def get_test_user(self, email="test@example.com", org=None):

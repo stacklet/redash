@@ -33,3 +33,14 @@ class TestPaginate(TestCase):
     def test_raises_error_for_bad_page_size(self):
         self.assertRaises(BadRequest, lambda: paginate(self.query_set, 1, 251, lambda x: x))
         self.assertRaises(BadRequest, lambda: paginate(self.query_set, 1, -1, lambda x: x))
+
+    def test_page_size_above_100_not_silently_capped(self):
+        # Sizes 101-250 are valid but were previously silently capped to 100
+        # by Flask-SQLAlchemy's default max_per_page. Verify paginate() is
+        # called with max_per_page=page_size so the full requested size is used.
+        for page_size in (101, 150, 250):
+            self.query_set.reset_mock()
+            paginate(self.query_set, 1, page_size, lambda x: x)
+            self.query_set.paginate.assert_called_once_with(
+                page=1, per_page=page_size, max_per_page=page_size
+            )

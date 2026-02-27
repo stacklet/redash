@@ -5,7 +5,7 @@ from urllib.parse import quote
 import regex
 from flask import make_response, request
 from flask_login import current_user
-from flask_restful import abort
+from flask_restx import abort
 
 from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, record_event, add_cors_headers

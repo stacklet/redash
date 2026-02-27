@@ -343,6 +343,8 @@ class TestQueryResultAPI(BaseTestCase):
         admin_user = self.factory.create_user()
         limited_user = self.factory.create_user()
         limited_user.db_role = "limited"
+        self.db.session.add_all([query, admin_user, limited_user])
+        self.db.session.commit()
 
         admin_response = self.make_request(
             "get",

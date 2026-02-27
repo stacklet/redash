@@ -3,6 +3,7 @@ from rq import Connection
 from rq.exceptions import NoSuchJobError
 
 from redash import models, rq_redis_connection
+from redash.models import QueryResult
 from redash.query_runner.pg import PostgreSQL
 from redash.tasks import Job
 from redash.tasks.queries.execution import (
@@ -183,7 +184,7 @@ class QueryExecutorTests(BaseTestCase):
             qr.return_value = (query_result_data, None)
             result_id = execute_query("SELECT 1, 2", self.factory.data_source.id, {})
             self.assertEqual(1, qr.call_count)
-            result = models.QueryResult.query.get(result_id)
+            result = models.db.session.get(QueryResult, result_id)
             self.assertEqual(result.data, query_result_data)
 
     def test_success_scheduled(self, _):
@@ -210,7 +211,7 @@ class QueryExecutorTests(BaseTestCase):
             )
             q = models.Query.get_by_id(q.id)
             self.assertEqual(q.schedule_failures, 0)
-            result = models.QueryResult.query.get(result_id)
+            result = models.db.session.get(QueryResult, result_id)
             self.assertEqual(q.latest_query_data, result)
 
     def test_failure_scheduled(self, _):

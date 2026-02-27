@@ -1,5 +1,5 @@
 from flask import request, url_for
-from flask_restful import abort
+from flask_restx import abort
 from funcy import partial, project
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -304,7 +304,6 @@ class DashboardShareResource(BaseResource):
         dashboard = models.Dashboard.get_by_id_and_org(dashboard_id, self.current_org)
         require_admin_or_owner(dashboard.user_id)
         api_key = models.ApiKey.create_for_object(dashboard, self.current_user)
-        models.db.session.flush()
         models.db.session.commit()
 
         public_url = url_for(
