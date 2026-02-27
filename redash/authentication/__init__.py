@@ -53,7 +53,6 @@ def load_user(user_id_with_identity):
     try:
         user_id, _ = user_id_with_identity.split("-")
         user = models.User.get_by_id_and_org(user_id, org)
-        models.db.session.refresh(user)  # Force reload from database
         if user.is_disabled or user.get_id() != user_id_with_identity:
             return None
 
