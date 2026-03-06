@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { isEmpty, includes, compact, map, has, pick, keys, extend, every, get } from "lodash";
+import { isEmpty, includes, compact, map, has, pick, keys, extend, every, get, isEqual } from "lodash";
 import notification from "@/services/notification";
 import location from "@/services/location";
 import url from "@/services/url";
@@ -138,7 +138,7 @@ function useDashboard(dashboardData) {
       return Promise.all(loadWidgetPromises).then(() => {
         const queryResults = compact(map(dashboardRef.current.widgets, widget => widget.getQueryResult()));
         const updatedFilters = collectDashboardFilters(dashboardRef.current, queryResults, location.search);
-        setFilters(updatedFilters);
+        setFilters(prevFilters => (isEqual(prevFilters, updatedFilters) ? prevFilters : updatedFilters));
       });
     },
     [loadWidget]
