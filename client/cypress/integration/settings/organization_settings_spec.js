@@ -22,7 +22,8 @@ describe("Settings", () => {
       query: "SELECT NOW()",
     }).then(({ id: queryId }) => {
       cy.visit(`/queries/${queryId}/source`);
-      cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
+      cy.getByTestId("ExecuteButton").should("not.be.disabled");
+      cy.getByTestId("ExecuteButton").click();
 
       // "created at" field is formatted with the date format.
       cy.getByTestId("TableVisualization")

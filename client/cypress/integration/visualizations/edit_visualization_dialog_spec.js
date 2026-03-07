@@ -11,9 +11,8 @@ describe("Edit visualization dialog", () => {
   });
 
   it("opens New Visualization dialog", () => {
-    cy.getByTestId("NewVisualization")
-      .should("exist")
-      .click();
+    cy.getByTestId("NewVisualization").should("exist");
+    cy.getByTestId("NewVisualization").click();
     cy.getByTestId("EditVisualizationDialog").should("exist");
     // Default visualization should be selected
     cy.getByTestId("VisualizationType")
