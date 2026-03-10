@@ -44,7 +44,8 @@ describe("Box Plot", () => {
       .then(({ id }) => cy.createVisualization(id, "BOXPLOT", "Boxplot (Deprecated)", {}))
       .then(({ id: visualizationId, query_id: queryId }) => {
         cy.visit(`queries/${queryId}/source#${visualizationId}`);
-        cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
+        cy.getByTestId("ExecuteButton").should("not.be.disabled");
+        cy.getByTestId("ExecuteButton").click();
       });
   });
 

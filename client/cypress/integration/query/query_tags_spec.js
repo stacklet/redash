@@ -18,9 +18,8 @@ describe("Query Tags", () => {
 
     cy.getByTestId("TagsControl").contains(".label", "Unpublished");
 
-    cy.getByTestId("EditTagsButton")
-      .should("contain", "Add tag")
-      .click();
+    cy.getByTestId("EditTagsButton").should("contain", "Add tag");
+    cy.getByTestId("EditTagsButton").click();
 
     typeInTagsSelectAndSave("tag1{enter}tag2{enter}tag3{enter}");
 

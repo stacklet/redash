@@ -107,9 +107,8 @@ describe("Pivot", () => {
       cy.wait(200);
 
       cy.getByTestId("SaveButton").click();
-      cy.getByTestId("ExecuteButton")
-        .should("be.enabled")
-        .click();
+      cy.getByTestId("ExecuteButton").should("be.enabled");
+      cy.getByTestId("ExecuteButton").click();
 
       // assert number of rows is 12
       cy.getByTestId("PivotTableVisualization").contains(".pvtGrandTotal", "12");

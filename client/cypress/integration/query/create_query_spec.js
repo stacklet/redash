@@ -14,9 +14,8 @@ describe("Create Query", () => {
       .get(".ace_text-input")
       .type("SELECT id, name FROM organizations{esc}", { force: true });
 
-    cy.getByTestId("ExecuteButton")
-      .should("be.enabled")
-      .click();
+    cy.getByTestId("ExecuteButton").should("be.enabled");
+    cy.getByTestId("ExecuteButton").click();
 
     cy.getByTestId("TableVisualization").should("exist");
     cy.percySnapshot("Edit Query");

@@ -34,7 +34,8 @@ describe("Choropleth", () => {
     cy.login();
     cy.createQuery({ query: SQL }).then(({ id }) => {
       cy.visit(`queries/${id}/source`);
-      cy.getByTestId("ExecuteButton").should("not.be.disabled").click();
+      cy.getByTestId("ExecuteButton").should("not.be.disabled");
+      cy.getByTestId("ExecuteButton").click();
     });
     cy.getByTestId("NewVisualization").click();
     cy.getByTestId("VisualizationType").selectAntdOption("VisualizationType.CHOROPLETH");

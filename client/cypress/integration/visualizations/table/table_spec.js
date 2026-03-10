@@ -18,7 +18,8 @@ function prepareVisualization(query, type, name, options) {
       // free more space for visualizations. Also, we'll hide schema browser (via shortcut)
       cy.visit(`queries/${queryId}#${visualizationId}`);
 
-      cy.getByTestId("ExecuteButton").first().should("not.be.disabled").click();
+      cy.getByTestId("ExecuteButton").first().should("not.be.disabled");
+      cy.getByTestId("ExecuteButton").first().click();
       cy.get("body").type("{alt}D");
 
       // do some pre-checks here to ensure that visualization was created and is visible
@@ -42,8 +43,10 @@ describe("Table", () => {
     const { query, config } = AllCellTypes;
     prepareVisualization(query, "TABLE", "All cell types", config).then(() => {
       // expand JSON cell
-      cy.get(".jvi-item.jvi-root .jvi-toggle").should("be.visible").click();
-      cy.get(".jvi-item.jvi-root .jvi-item .jvi-toggle").should("be.visible").click({ multiple: true });
+      cy.get(".jvi-item.jvi-root .jvi-toggle").should("be.visible");
+      cy.get(".jvi-item.jvi-root .jvi-toggle").click();
+      cy.get(".jvi-item.jvi-root .jvi-item .jvi-toggle").should("be.visible");
+      cy.get(".jvi-item.jvi-root .jvi-item .jvi-toggle").click({ multiple: true });
 
       cy.percySnapshot("Visualizations - Table (All cell types)", { widths: [viewportWidth] });
     });
