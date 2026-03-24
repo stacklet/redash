@@ -3,9 +3,27 @@ import datetime
 import mock
 import pytest
 
+from sqlalchemy import text
+
 from redash.models import Event, Group, Query, QueryResult, db
 from redash.utils import gen_query_hash, utcnow
 from tests import BaseTestCase
+
+
+class TestParseWebsearchFunction(BaseTestCase):
+    """Regression tests for PR #88: parse_websearch must exist in the database."""
+
+    def test_parse_websearch_function_exists(self):
+        result = db.session.execute(
+            text("SELECT parse_websearch('pg_catalog.simple', 'test query')")
+        ).scalar()
+        self.assertIsNotNone(result)
+
+    def test_parse_websearch_single_arg_overload(self):
+        result = db.session.execute(
+            text("SELECT parse_websearch('test query')")
+        ).scalar()
+        self.assertIsNotNone(result)
 
 
 class QueryTest(BaseTestCase):
