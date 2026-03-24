@@ -55,6 +55,8 @@ class BaseTestCase(TestCase):
         self.app_ctx.push()
 
         db.drop_all()
+        # Force configure_mappers so searchable DDL listeners are attached
+        db.configure_mappers()
         db.create_all()
         db.session.commit()
 

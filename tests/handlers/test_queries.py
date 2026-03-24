@@ -78,6 +78,14 @@ class TestQueryResourceGet(BaseTestCase):
         self.assertEqual(len(rv.json["results"]), 1)
 
 
+class TestQuerySearchRegression(BaseTestCase):
+    def test_query_search_returns_200(self):
+        """Regression test: search must not 500 due to missing parse_websearch function."""
+        self.factory.create_query(name="Searchable Query")
+        rv = self.make_request("get", "/api/queries?q=searchable")
+        self.assertEqual(rv.status_code, 200)
+
+
 class TestQueryResourcePost(BaseTestCase):
     def test_update_query(self):
         admin = self.factory.create_admin()
