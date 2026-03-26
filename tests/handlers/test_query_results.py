@@ -1,6 +1,36 @@
-from redash.handlers.query_results import error_messages, run_query
+from redash.handlers.query_results import content_disposition_filenames, error_messages, run_query
 from redash.models import db
 from tests import BaseTestCase
+
+
+class TestContentDispositionFilenames(BaseTestCase):
+    def test_ascii_filename_returns_str(self):
+        result = content_disposition_filenames("report_2026_03_24.csv")
+        self.assertIsInstance(result["filename"], str)
+        self.assertEqual(result["filename"], "report_2026_03_24.csv")
+
+    def test_ascii_filename_has_no_filename_star(self):
+        result = content_disposition_filenames("report_2026_03_24.csv")
+        self.assertNotIn("filename*", result)
+
+    def test_unicode_filename_returns_str_values(self):
+        result = content_disposition_filenames("שלום_report.csv")
+        self.assertIsInstance(result["filename"], str)
+        self.assertIsInstance(result["filename*"], str)
+        # Hebrew characters have no ASCII equivalents, so NFKD normalisation leaves them
+        # unchanged and encode("ascii", "ignore") drops them entirely — only the ASCII
+        # suffix "_report.csv" survives.  filename* (RFC 5987 percent-encoded) is the
+        # authoritative field for non-ASCII names; filename is a degraded fallback.
+        self.assertEqual(result["filename"], "_report.csv")
+
+    def test_unicode_filename_star_is_rfc5987(self):
+        result = content_disposition_filenames("שלום_report.csv")
+        self.assertTrue(result["filename*"].startswith("UTF-8''"), result["filename*"])
+
+    def test_bytes_input_is_decoded(self):
+        result = content_disposition_filenames(b"report_2026_03_24.csv")
+        self.assertIsInstance(result["filename"], str)
+        self.assertEqual(result["filename"], "report_2026_03_24.csv")
 
 
 class TestRunQuery(BaseTestCase):
