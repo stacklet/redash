@@ -132,11 +132,11 @@ def content_disposition_filenames(attachment_filename):
         attachment_filename = attachment_filename.decode("utf-8")
 
     try:
-        attachment_filename = attachment_filename.encode("ascii")
+        attachment_filename.encode("ascii")
     except UnicodeEncodeError:
         filenames = {
-            "filename": unicodedata.normalize("NFKD", attachment_filename).encode("ascii", "ignore"),
-            "filename*": "UTF-8''%s" % quote(attachment_filename, safe=b""),
+            "filename": unicodedata.normalize("NFKD", attachment_filename).encode("ascii", "ignore").decode("ascii"),
+            "filename*": "UTF-8''%s" % quote(attachment_filename, safe=""),
         }
     else:
         filenames = {"filename": attachment_filename}
