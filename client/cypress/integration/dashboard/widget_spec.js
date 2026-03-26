@@ -209,7 +209,8 @@ describe("Widget", () => {
       cy.getByTestId(elTestId).within(() => {
         cy.getByTestId("TableVisualization").should("contain", "sleep time: 0");
         cy.get(".refresh-indicator").should("not.be.visible");
-
+      });
+      cy.getByTestId(elTestId).within(() => {
         cy.getByTestId("ParameterName-sleep-time").type("10");
         cy.getByTestId("ParameterApplyButton").click();
         cy.get(".refresh-indicator").should("be.visible");
