@@ -62,7 +62,8 @@ describe("Dashboard Parameters", () => {
     // widget parameter mapping is the default for the API
     cy.getByTestId(this.widgetTestId).within(() => {
       cy.getByTestId("TableVisualization").should("contain", "example1");
-
+    });
+    cy.getByTestId(this.widgetTestId).within(() => {
       cy.getByTestId("ParameterName-param1")
         .find("input")
         .type("{selectall}Redash");

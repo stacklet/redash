@@ -46,7 +46,8 @@ describe("Dashboard Filters", () => {
     cy.getByTestId(this.widget1TestId).within(() => {
       expectTableToHaveLength(4);
       expectFirstColumnToHaveMembers(["a", "a", "a", "a"]);
-
+    });
+    cy.getByTestId(this.widget1TestId).within(() => {
       cy.getByTestId("FilterName-stage1::filter")
         .find(".ant-select")
         .click();
