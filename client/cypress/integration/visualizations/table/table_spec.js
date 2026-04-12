@@ -41,7 +41,10 @@ describe("Table", () => {
   it("renders all cell types", () => {
     const { query, config } = AllCellTypes;
     prepareVisualization(query, "TABLE", "All cell types", config).then(() => {
-      // expand JSON cell - omit should("be.visible") to avoid detached-DOM retry loop on re-renders
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      cy.wait(500); // let layout settle after {alt}D hides the schema browser before clicking jvi-toggle
+
+      // expand JSON cell
       cy.get(".jvi-item.jvi-root .jvi-toggle").click();
       cy.get(".jvi-item.jvi-root .jvi-item .jvi-toggle").click({ multiple: true });
 
