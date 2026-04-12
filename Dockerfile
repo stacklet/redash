@@ -119,6 +119,28 @@ RUN /etc/poetry/bin/poetry install --only $install_groups $POETRY_OPTIONS && \
 COPY --chown=redash . /app
 COPY --from=frontend-builder --chown=redash /frontend/client/dist /app/client/dist
 RUN chown redash /app
+
+# Remove build-only packages to reduce CVE surface area.
+# Re-install the runtime .so counterparts explicitly so autoremove doesn't orphan them.
+RUN SUDO_FORCE_REMOVE=yes apt-get remove -y --purge \
+      build-essential g++ pkg-config git-core git curl gnupg unzip pwgen sudo \
+      libffi-dev libssl-dev libpq-dev default-libmysqlclient-dev \
+      freetds-dev libsasl2-dev libkrb5-dev unixodbc-dev \
+      patch \
+      libcurl3-gnutls libldap-2.5-0 libnghttp2-14 \
+      perl perl-modules-5.36 libperl5.36 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      libpq5 \
+      libmariadb3 \
+      libct4 \
+      libsybdb5 \
+      libgssapi-krb5-2 \
+      libodbc2 && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /etc/poetry
+
 USER redash
 
 ENTRYPOINT ["/app/bin/docker-entrypoint"]
