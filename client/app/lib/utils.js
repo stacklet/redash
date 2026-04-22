@@ -47,16 +47,11 @@ export function formatDate(value) {
 
 export function localizeTime(time) {
   const [hrs, mins] = time.split(":");
-  // moment.locale() called with no param returns a locale ID string,
-  // but when called with a locale ID string it returns a date value.
-  // Call it first with no param to get the default locale ID and then
-  // explicitly pass that in to avoid a type error below.
-  const locale = moment.locale() || "en";
   return moment
     .utc()
     .hour(hrs)
     .minute(mins)
-    .locale(locale)
+    .local()
     .format("HH:mm");
 }
 
