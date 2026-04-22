@@ -1157,7 +1157,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
   data-testid="time"
 >
   <TimeEditor
-    defaultValue={"2000-01-01T20:15:00.000Z"}
+    defaultValue={"1999-12-31T22:15:00.000Z"}
     onChange={[Function]}
   >
     <TimePicker
@@ -1165,14 +1165,14 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
       format="HH:mm"
       minuteStep={5}
       onChange={[Function]}
-      value={"2000-01-01T20:15:00.000Z"}
+      value={"1999-12-31T22:15:00.000Z"}
     >
       <TimePicker
         allowClear={false}
         format="HH:mm"
         minuteStep={5}
         onChange={[Function]}
-        value={"2000-01-01T20:15:00.000Z"}
+        value={"1999-12-31T22:15:00.000Z"}
       >
         <LocaleReceiver
           componentName="DatePicker"
@@ -1301,7 +1301,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
               />
             }
             transitionName="slide-up"
-            value={"2000-01-01T20:15:00.000Z"}
+            value={"1999-12-31T22:15:00.000Z"}
           >
             <InnerPicker
               allowClear={false}
@@ -1434,7 +1434,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
                 />
               }
               transitionName="slide-up"
-              value={"2000-01-01T20:15:00.000Z"}
+              value={"1999-12-31T22:15:00.000Z"}
             >
               <PickerTrigger
                 popupElement={
@@ -1574,7 +1574,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
                       }
                       tabIndex={-1}
                       transitionName="slide-up"
-                      value={"2000-01-01T20:15:00.000Z"}
+                      value={"1999-12-31T22:15:00.000Z"}
                     />
                   </div>
                 }
@@ -1797,7 +1797,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
                         }
                         tabIndex={-1}
                         transitionName="slide-up"
-                        value={"2000-01-01T20:15:00.000Z"}
+                        value={"1999-12-31T22:15:00.000Z"}
                       />
                     </div>
                   }
@@ -1938,7 +1938,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "1 Day 22:15" Set
       data-testid="utc"
     >
       (
-      20:15
+      22:15
        UTC)
     </span>
   </TimeEditor>
@@ -4251,7 +4251,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
   data-testid="time"
 >
   <TimeEditor
-    defaultValue={"2000-01-01T20:15:00.000Z"}
+    defaultValue={"1999-12-31T22:15:00.000Z"}
     onChange={[Function]}
   >
     <TimePicker
@@ -4259,14 +4259,14 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
       format="HH:mm"
       minuteStep={5}
       onChange={[Function]}
-      value={"2000-01-01T20:15:00.000Z"}
+      value={"1999-12-31T22:15:00.000Z"}
     >
       <TimePicker
         allowClear={false}
         format="HH:mm"
         minuteStep={5}
         onChange={[Function]}
-        value={"2000-01-01T20:15:00.000Z"}
+        value={"1999-12-31T22:15:00.000Z"}
       >
         <LocaleReceiver
           componentName="DatePicker"
@@ -4395,7 +4395,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
               />
             }
             transitionName="slide-up"
-            value={"2000-01-01T20:15:00.000Z"}
+            value={"1999-12-31T22:15:00.000Z"}
           >
             <InnerPicker
               allowClear={false}
@@ -4528,7 +4528,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
                 />
               }
               transitionName="slide-up"
-              value={"2000-01-01T20:15:00.000Z"}
+              value={"1999-12-31T22:15:00.000Z"}
             >
               <PickerTrigger
                 popupElement={
@@ -4668,7 +4668,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
                       }
                       tabIndex={-1}
                       transitionName="slide-up"
-                      value={"2000-01-01T20:15:00.000Z"}
+                      value={"1999-12-31T22:15:00.000Z"}
                     />
                   </div>
                 }
@@ -4891,7 +4891,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
                         }
                         tabIndex={-1}
                         transitionName="slide-up"
-                        value={"2000-01-01T20:15:00.000Z"}
+                        value={"1999-12-31T22:15:00.000Z"}
                       />
                     </div>
                   }
@@ -5032,7 +5032,7 @@ exports[`ScheduleDialog Sets correct schedule settings Sets to "2 Weeks 22:15 Tu
       data-testid="utc"
     >
       (
-      20:15
+      22:15
        UTC)
     </span>
   </TimeEditor>
