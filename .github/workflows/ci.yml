@@ -10,6 +10,7 @@ permissions:
   contents: read
 jobs:
   backend-unit-tests:
+    name: backend-unit-tests
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -25,6 +26,7 @@ jobs:
         run: just backend-test
 
   frontend-unit-tests:
+    name: frontend-unit-tests
     runs-on: ubuntu-22.04
     permissions:
       id-token: write

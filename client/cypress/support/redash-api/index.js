@@ -5,7 +5,19 @@ const { extend, get, merge, find } = Cypress._;
 const post = options =>
   cy
     .getCookie("csrf_token")
-    .then(csrf => cy.request({ ...options, method: "POST", headers: { "X-CSRF-TOKEN": csrf.value } }));
+    .then(csrf => {
+      if (csrf) return csrf.value;
+      // CSRF cookie absent (e.g. rotated during login); visit /login to
+      // re-establish it, falling back to the hidden form input if the
+      // cookie still isn't set — same chain as login() in commands.js
+      return cy.visit("/login").then(() =>
+        cy.getCookie("csrf_token").then(cookie => {
+          if (cookie) return cookie.value;
+          return cy.get('input[name="csrf_token"]').invoke("val");
+        })
+      );
+    })
+    .then(token => cy.request({ ...options, method: "POST", headers: { "X-CSRF-TOKEN": token } }));
 
 Cypress.Commands.add("createDashboard", name => {
   return post({ url: "api/dashboards", body: { name } }).then(({ body }) => body);
