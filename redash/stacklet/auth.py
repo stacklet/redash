@@ -53,7 +53,11 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False, schema=None):
         return None
     url = sqlalchemy.engine.url.make_url(dburi)
     iam_auth = url.query.get("iam_auth")
-    url = sqlalchemy.engine.url.make_url(str(url).split("?")[0])
+    # Drop the iam_auth flag (it isn't a real connect arg) while preserving the
+    # rest of the URL.  Don't round-trip through str(url): that renders the
+    # password as "***", so a plain user:password URL -- no iam_auth, no
+    # dbcreds -- would otherwise connect with a masked password and fail auth.
+    url = url.difference_update_query(["iam_auth"])
     params = {"json_serializer": json.dumps}
 
     # Add schema translation if schema is provided
