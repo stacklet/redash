@@ -49,7 +49,6 @@ export default function AppSwitcher() {
 
         const appConfigs = [
           { key: "console", label: "Console" },
-          { key: "jun0", label: "Jun0" },
           { key: "sinistral", label: "IaC Governance" },
         ];
 
