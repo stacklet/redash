@@ -213,7 +213,12 @@ class ParameterizedQuery:
             "enum": lambda value: _is_value_within_options(value, enum_options, allow_multiple_values),
             "query": lambda value: _is_value_within_options(
                 value,
-                [v["value"] for v in dropdown_values(query_id, self.org, user, query_stack=query_stack)],
+                [
+                    v["value"]
+                    for v in dropdown_values(
+                        query_id, self.org, user, run_if_not_cached=True, query_stack=query_stack
+                    )
+                ],
                 allow_multiple_values,
             ),
             "date": _is_date,

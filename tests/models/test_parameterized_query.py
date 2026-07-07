@@ -227,6 +227,23 @@ class TestParameterizedQuery(TestCase):
 
         self.assertEqual("foo baz", query.text)
 
+    @patch(
+        "redash.models.parameterized_query.dropdown_values",
+        return_value=[{"value": "baz"}],
+    )
+    def test_query_validation_populates_dropdown_cache_on_demand(self, dropdown_values_mock):
+        # Validating a query-backed parameter must run the dropdown query
+        # on-demand when it isn't cached for the requesting user's db_role,
+        # rather than failing (ENG-7919). Otherwise a limited-visibility user
+        # whose db_role has no cached dropdown result gets a spurious
+        # InvalidParameterError.
+        schema = [{"name": "bar", "type": "query", "queryId": 1}]
+        query = ParameterizedQuery("foo {{bar}}", schema)
+
+        query.apply({"bar": "baz"}, None)
+
+        self.assertTrue(dropdown_values_mock.call_args.kwargs["run_if_not_cached"])
+
     def test_raises_on_invalid_date_range_parameters(self):
         schema = [{"name": "bar", "type": "date-range"}]
         query = ParameterizedQuery("foo", schema)
