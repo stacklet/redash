@@ -48,6 +48,7 @@ export default function AppSwitcher() {
         ];
 
         const appConfigs = [
+          { key: "superset", label: "AssetDB v2" },
           { key: "console", label: "Console" },
           { key: "sinistral", label: "IaC Governance" },
         ];
