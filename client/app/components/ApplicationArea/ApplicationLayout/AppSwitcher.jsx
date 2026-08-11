@@ -48,7 +48,8 @@ export default function AppSwitcher() {
         ];
 
         const appConfigs = [
-          { key: "superset", label: "AssetDB v2" },
+          // "(Preview)" disambiguates from this Redash-backed AssetDB
+          { key: "superset", label: "AssetDB (Preview)" },
           { key: "console", label: "Console" },
           { key: "sinistral", label: "IaC Governance" },
         ];
