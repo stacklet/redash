@@ -466,6 +466,57 @@ class TestJWTAuthentication(BaseTestCase):
         response = self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
         self.assertEqual(response.status_code, 200)
 
+    def test_jwt_accepts_any_configured_audience(self):
+        """A deployment can name several app clients, and a token names only one.
+
+        The audience claim identifies the client a token was issued to, so a
+        second client authenticating the same user (an OAuth proxy obtaining its
+        own tokens) presents a different one. Configuring only the first would
+        reject it, which is indistinguishable from a bad token to the caller.
+        """
+        user = self.factory.create_user()
+        other_audience = "Another Client"
+        org_settings["auth_jwt_auth_audience"] = [self.auth_audience, other_audience]
+
+        issued_at_timestamp = time.time()
+        data = {
+            "aud": other_audience,
+            "email": user.email,
+            "exp": issued_at_timestamp + 60,
+            "iat": issued_at_timestamp,
+            "iss": self.auth_issuer,
+        }
+        with open(self.rsa_private_key) as keyfile:
+            sign_key = keyfile.read().strip()
+        token_data = jwt.encode(data, sign_key, algorithm="RS256")
+
+        response = self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
+        self.assertEqual(response.status_code, 200)
+
+    def test_jwt_rejects_an_audience_not_configured(self):
+        """The list is still a closed set, not a way of skipping the check.
+
+        401 rather than the 302 an absent token gets: `verify_jwt_token` raises,
+        and `jwt_token_load_user_from_request` turns that into `Unauthorized`.
+        """
+        user = self.factory.create_user()
+        org_settings["auth_jwt_auth_audience"] = [self.auth_audience, "Another Client"]
+
+        issued_at_timestamp = time.time()
+        data = {
+            "aud": "Some Other Client",
+            "email": user.email,
+            "exp": issued_at_timestamp + 60,
+            "iat": issued_at_timestamp,
+            "iss": self.auth_issuer,
+        }
+        with open(self.rsa_private_key) as keyfile:
+            sign_key = keyfile.read().strip()
+        token_data = jwt.encode(data, sign_key, algorithm="RS256")
+
+        response = self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
+        self.assertEqual(response.status_code, 401)
+
     @patch.object(requests, "get")
     def test_jwk_decode(self, mock_get):
         with open(self.rsa_public_key, "rb") as keyfile:
