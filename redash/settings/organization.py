@@ -32,7 +32,13 @@ MULTI_BYTE_SEARCH_ENABLED = parse_boolean(os.environ.get("MULTI_BYTE_SEARCH_ENAB
 JWT_LOGIN_ENABLED = parse_boolean(os.environ.get("REDASH_JWT_LOGIN_ENABLED", "false"))
 JWT_AUTH_ISSUER = os.environ.get("REDASH_JWT_AUTH_ISSUER", "")
 JWT_AUTH_PUBLIC_CERTS_URL = os.environ.get("REDASH_JWT_AUTH_PUBLIC_CERTS_URL", "")
-JWT_AUTH_AUDIENCE = os.environ.get("REDASH_JWT_AUTH_AUDIENCE", "")
+# Comma-separated, because a deployment can mint tokens for more than one app
+# client and the audience claim names the client a token was issued to. Cognito
+# deployments have at least two: the console's, and the MCP OAuth proxy's, which
+# obtains its own tokens for the same user. PyJWT takes a list and accepts a
+# token matching any entry. An empty value still yields an empty list, which
+# `jwt_token_load_user_from_request` reads as "do not verify the audience".
+JWT_AUTH_AUDIENCE = [aud.strip() for aud in os.environ.get("REDASH_JWT_AUTH_AUDIENCE", "").split(",") if aud.strip()]
 JWT_AUTH_ALGORITHMS = os.environ.get("REDASH_JWT_AUTH_ALGORITHMS", "HS256,RS256,ES256").split(",")
 JWT_AUTH_CLIENT_ID = os.environ.get("REDASH_JWT_AUTH_CLIENT_ID", "")
 JWT_AUTH_COOKIE_NAME = os.environ.get("REDASH_JWT_AUTH_COOKIE_NAME", "")
