@@ -254,9 +254,15 @@ class PostgreSQL(BaseSQLQueryRunner):
 
     def _gen_role_pass(self, role_name: str) -> str:
         """
-        Generate a password for a given role using the datasource secret and role name.
+        Generate a password for a given role using the shared RLS secret and role name.
+
+        Must match stacklet.shared.sql.rls.gen_role_pass in the platform.
         """
-        secret = settings.DATASOURCE_SECRET_KEY
+        secret = settings.RLS_SECRET
+        if not secret:
+            raise ValueError(
+                f"REDASH_RLS_SECRET is not set, so the password for role {role_name} can't be derived"
+            )
         return hashlib.sha256(f"{secret}:{role_name}".encode("utf-8")).hexdigest()
 
     @inject_iam_auth

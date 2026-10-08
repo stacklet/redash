@@ -68,6 +68,11 @@ if SECRET_KEY is None:
 # The secret key to use when encrypting data source options
 DATASOURCE_SECRET_KEY = os.environ.get("REDASH_SECRET_KEY", SECRET_KEY)
 
+# The platform's shared RLS secret, from which per-role Postgres passwords are derived.
+# Deliberately separate from DATASOURCE_SECRET_KEY, which must keep decrypting stored
+# data source options.
+RLS_SECRET = os.environ.get("REDASH_RLS_SECRET")
+
 # Whether and how to redirect non-HTTP requests to HTTPS. Disabled by default.
 ENFORCE_HTTPS = parse_boolean(os.environ.get("REDASH_ENFORCE_HTTPS", "false"))
 ENFORCE_HTTPS_PERMANENT = parse_boolean(os.environ.get("REDASH_ENFORCE_HTTPS_PERMANENT", "false"))
