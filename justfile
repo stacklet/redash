@@ -76,6 +76,10 @@ e2e-test: cleanup-e2e-test
 	export COMPOSE_PROJECT_NAME=cypress
 	export COMPOSE_DOCKER_CLI_BUILD=1
 	export DOCKER_BUILDKIT=1
+	# Passed as an environment secret: bake refuses file secrets outside the
+	# repo, and Compose does not grant it fs.read for them.
+	NPMRC=$(< ~/.npmrc)
+	export NPMRC
 
 	echo "Building Cypress environment..."
 	yarn cypress build
