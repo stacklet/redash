@@ -78,4 +78,4 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "trust"
 secrets:
   npmrc:
-    file: ${HOME}/.npmrc
+    environment: NPMRC
