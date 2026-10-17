@@ -13,6 +13,7 @@ ALL_DS_INSTALLED = importlib.util.find_spec("pyathena") is not None
 # Default runners not expected to register in the CI image.
 KNOWN_DISABLED = {
     "redash.query_runner.db2",  # ibm_db is not a dependency
+    "redash.query_runner.snowflake",  # pins pyopenssl<26, blocking its CVE fix
 }
 
 
