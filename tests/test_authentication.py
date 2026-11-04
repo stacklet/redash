@@ -9,6 +9,7 @@ import jwt
 import requests
 from flask import request
 from mock import Mock, patch
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models, settings
@@ -515,6 +516,79 @@ class TestJWTAuthentication(BaseTestCase):
         token_data = jwt.encode(data, sign_key, algorithm="RS256")
 
         response = self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
+        self.assertEqual(response.status_code, 401)
+
+    def _get_with_claims(self, user, **claims):
+        issued_at_timestamp = time.time()
+        data = {
+            "aud": self.auth_audience,
+            "email": user.email,
+            "exp": issued_at_timestamp + 60,
+            "iat": issued_at_timestamp,
+            "iss": self.auth_issuer,
+            **claims,
+        }
+        with open(self.rsa_private_key) as keyfile:
+            sign_key = keyfile.read().strip()
+        token_data = jwt.encode(data, sign_key, algorithm="RS256")
+        return self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
+
+    def _stored_db_role(self, user):
+        # a separate session releases its connection on exit, or the next
+        # test's drop_all blocks on the lock left by the read
+        with Session(models.db.engine) as session:
+            return session.get(models.User, user.id).db_role
+
+    def test_jwt_rls_access_sets_sso_db_role(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(user, **{"stacklet:rls_access": "jane_doe_example_com_a1b2c3"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._stored_db_role(user), "sso_jane_doe_example_com_a1b2c3")
+
+    def test_jwt_rls_access_takes_precedence_over_db_role(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(
+            user,
+            **{"stacklet:rls_access": "jane_a1b2c3", "stacklet:db_role": "sso_other_d4e5f6"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._stored_db_role(user), "sso_jane_a1b2c3")
+
+    def test_jwt_rls_access_unrestricted_clears_db_role(self):
+        user = self.factory.create_user(db_role="sso_jane_a1b2c3")
+        response = self._get_with_claims(
+            user,
+            **{"stacklet:rls_access": "unrestricted", "stacklet:db_role": "sso_jane_a1b2c3"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(self._stored_db_role(user))
+
+    def test_jwt_rls_access_no_visibility_is_denied(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(user, **{"stacklet:rls_access": "no_visibility"})
+        self.assertEqual(response.status_code, 401)
+
+    def test_jwt_rls_access_malformed_is_denied(self):
+        user = self.factory.create_user()
+        for access in ("", "jane", "Jane_a1b2c3", "jane_a1b2c", "jane_a1b2c3\n", "sso_jane_a1b2cz", None, 123):
+            with self.subTest(access=access):
+                response = self._get_with_claims(user, **{"stacklet:rls_access": access})
+                self.assertEqual(response.status_code, 401)
+
+    def test_jwt_legacy_db_role_without_rls_access(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(user, **{"stacklet:db_role": "sso_jane_a1b2c3"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._stored_db_role(user), "sso_jane_a1b2c3")
+
+    def test_jwt_legacy_limited_visibility_db_role_is_denied(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(user, **{"stacklet:db_role": "limited_visibility"})
+        self.assertEqual(response.status_code, 401)
+
+    def test_jwt_legacy_no_visibility_db_role_is_denied(self):
+        user = self.factory.create_user()
+        response = self._get_with_claims(user, **{"stacklet:db_role": "no_visibility"})
         self.assertEqual(response.status_code, 401)
 
     @patch.object(requests, "get")

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import time
 from datetime import timedelta
 from urllib.parse import quote_plus, urlsplit, urlunsplit
@@ -193,9 +194,8 @@ def jwt_token_load_user_from_request(request):
 
     if not valid_token:
         return None
-    
-    if payload.get("stacklet:db_role") == "limited_visibility":
-        raise Unauthorized("Unable to determine SSO identity")
+
+    db_role = _db_role_from_claims(payload)
 
     # it might actually be a username or something, but it doesn't actually matter
     email = identity
@@ -220,12 +220,43 @@ def jwt_token_load_user_from_request(request):
                 user_groups.discard("admin")
             user.update_group_assignments(user_groups)
 
-    db_role = payload.get("stacklet:db_role") or None  # force None instead of empty string, JIC
     if db_role != user.db_role:
         user.db_role = db_role
         models.db.session.commit()
 
     return user
+
+
+# `stacklet:rls_access` is either one of the reserved values below, or the
+# stem the platform derives for a scoped user's RLS identity: up to 20
+# sanitised characters, then `_`, then 6 hex characters of a hash. The
+# reserved values can't match the stem pattern.
+RLS_ACCESS_UNRESTRICTED = "unrestricted"
+RLS_ACCESS_NO_VISIBILITY = "no_visibility"
+RLS_STEM_RE = re.compile(r"[a-z0-9_]+_[0-9a-f]{6}")
+
+
+def _db_role_from_claims(payload):
+    """Return the database role to run queries as, or None for the data source user.
+
+    Reads `stacklet:rls_access`, falling back to the legacy `stacklet:db_role`
+    only for tokens minted before the platform sent it. Raises Unauthorized
+    for users who must not see any data, and for malformed values.
+    """
+    if "stacklet:rls_access" not in payload:
+        db_role = payload.get("stacklet:db_role") or None
+        if db_role in ("limited_visibility", RLS_ACCESS_NO_VISIBILITY):
+            raise Unauthorized("Unable to determine SSO identity")
+        return db_role
+
+    access = payload["stacklet:rls_access"]
+    if access == RLS_ACCESS_UNRESTRICTED:
+        return None
+    if access == RLS_ACCESS_NO_VISIBILITY:
+        raise Unauthorized("Unable to determine SSO identity")
+    if isinstance(access, str) and RLS_STEM_RE.fullmatch(access):
+        return "sso_" + access
+    raise Unauthorized("Invalid stacklet:rls_access claim")
 
 
 def log_user_logged_in(app, user):
