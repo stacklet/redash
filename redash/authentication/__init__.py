@@ -233,7 +233,9 @@ def jwt_token_load_user_from_request(request):
 # reserved values can't match the stem pattern.
 RLS_ACCESS_UNRESTRICTED = "unrestricted"
 RLS_ACCESS_NO_VISIBILITY = "no_visibility"
-RLS_STEM_RE = re.compile(r"[a-z0-9_]+_[0-9a-f]{6}")
+RLS_STEM_RE = re.compile(r"[a-z0-9_]{1,20}_[0-9a-f]{6}")
+# `stacklet:db_role` values that mean the user must not see any data.
+LEGACY_DB_ROLE_LIMITED_VISIBILITY = "limited_visibility"
 
 
 def _db_role_from_claims(payload):
@@ -245,7 +247,7 @@ def _db_role_from_claims(payload):
     """
     if "stacklet:rls_access" not in payload:
         db_role = payload.get("stacklet:db_role") or None
-        if db_role in ("limited_visibility", RLS_ACCESS_NO_VISIBILITY):
+        if db_role in (LEGACY_DB_ROLE_LIMITED_VISIBILITY, RLS_ACCESS_NO_VISIBILITY):
             raise Unauthorized("Unable to determine SSO identity")
         return db_role
 
