@@ -7,8 +7,10 @@ import time
 import jwcrypto.jwk
 import jwt
 import requests
-from flask import request
+from flask import g, request
 from mock import Mock, patch
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models, settings
@@ -516,6 +518,92 @@ class TestJWTAuthentication(BaseTestCase):
 
         response = self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
         self.assertEqual(response.status_code, 401)
+
+    def _get_with_claims(self, email, **claims):
+        issued_at_timestamp = time.time()
+        data = {
+            "aud": self.auth_audience,
+            "email": email,
+            "exp": issued_at_timestamp + 60,
+            "iat": issued_at_timestamp,
+            "iss": self.auth_issuer,
+            **claims,
+        }
+        with open(self.rsa_private_key) as keyfile:
+            sign_key = keyfile.read().strip()
+        token_data = jwt.encode(data, sign_key, algorithm="RS256")
+        # Flask-Login caches the user on `g`, which outlives the request in tests, and
+        # would authenticate this one as the previous user without reading the token
+        g.pop("_login_user", None)
+        return self.get_request("/data_sources", org=self.factory.org, headers={self.token_name: token_data})
+
+    def _stored_db_role(self, user):
+        # a separate session releases its connection on exit, or the next
+        # test's drop_all blocks on the lock left by the read
+        with Session(models.db.engine) as session:
+            return session.get(models.User, user.id).db_role
+
+    def _user_count(self, email):
+        with Session(models.db.engine) as session:
+            return session.scalar(select(func.count()).select_from(models.User).where(models.User.email == email))
+
+    def test_jwt_sets_db_role_from_claims(self):
+        cases = [
+            # (db_role before, claims, db_role after)
+            # a stem is up to 20 sanitised characters, `_` and 6 hex characters
+            (None, {"stacklet:rls_access": "jane_doe_example_com_a1b2c3"}, "sso_jane_doe_example_com_a1b2c3"),
+            # the new claim wins over the legacy one
+            (
+                None,
+                {"stacklet:rls_access": "jane_a1b2c3", "stacklet:db_role": "sso_other_d4e5f6"},
+                "sso_jane_a1b2c3",
+            ),
+            # unrestricted clears a previously stored role
+            (
+                "sso_jane_a1b2c3",
+                {"stacklet:rls_access": "unrestricted", "stacklet:db_role": "sso_jane_a1b2c3"},
+                None,
+            ),
+            # tokens minted before the new claim fall back to the legacy one
+            (None, {"stacklet:db_role": "sso_jane_a1b2c3"}, "sso_jane_a1b2c3"),
+        ]
+        for before, claims, expected in cases:
+            with self.subTest(claims=claims):
+                user = self.factory.create_user(db_role=before)
+                response = self._get_with_claims(user.email, **claims)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(self._stored_db_role(user), expected)
+
+    def test_jwt_denied_claims(self):
+        malformed = (
+            "",
+            "jane",
+            "Jane_a1b2c3",
+            "jane_a1b2c",
+            "jane_a1b2c3\n",
+            "sso_jane_a1b2cz",
+            "a" * 21 + "_a1b2c3",
+            None,
+            123,
+        )
+        cases = [
+            {"stacklet:rls_access": "no_visibility"},
+            {"stacklet:db_role": "limited_visibility"},
+            {"stacklet:db_role": "no_visibility"},
+            *({"stacklet:rls_access": access} for access in malformed),
+        ]
+        unknown_email = "nobody@example.com"
+        for claims in cases:
+            with self.subTest(claims=claims):
+                user = self.factory.create_user(db_role="sso_existing_a1b2c3")
+
+                response = self._get_with_claims(user.email, **claims)
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(self._stored_db_role(user), "sso_existing_a1b2c3")
+
+                response = self._get_with_claims(unknown_email, **claims)
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(self._user_count(unknown_email), 0)
 
     @patch.object(requests, "get")
     def test_jwk_decode(self, mock_get):
