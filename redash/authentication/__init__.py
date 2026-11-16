@@ -227,12 +227,13 @@ def jwt_token_load_user_from_request(request):
     return user
 
 
-# `stacklet:rls_access` is either one of the reserved values below, or the
-# stem the platform derives for a scoped user's RLS identity: up to 20
-# sanitised characters, then `_`, then 6 hex characters of a hash. The
-# reserved values can't match the stem pattern.
+# `stacklet:rls_access` is either one of the reserved values below, or `stem:` and the stem
+# the platform derives for a scoped user's RLS identity: up to 20 sanitised characters, then
+# `_`, then 6 hex characters of a hash. The prefix keeps a stem from being taken for a reserved
+# value; a stem without it is malformed.
 RLS_ACCESS_UNRESTRICTED = "unrestricted"
 RLS_ACCESS_NO_VISIBILITY = "no_visibility"
+RLS_ACCESS_STEM_PREFIX = "stem:"
 RLS_STEM_RE = re.compile(r"[a-z0-9_]{1,20}_[0-9a-f]{6}")
 # `stacklet:db_role` values that mean the user must not see any data.
 LEGACY_DB_ROLE_LIMITED_VISIBILITY = "limited_visibility"
@@ -256,8 +257,10 @@ def _db_role_from_claims(payload):
         return None
     if access == RLS_ACCESS_NO_VISIBILITY:
         raise Unauthorized("Unable to determine SSO identity")
-    if isinstance(access, str) and RLS_STEM_RE.fullmatch(access):
-        return "sso_" + access
+    if isinstance(access, str) and access.startswith(RLS_ACCESS_STEM_PREFIX):
+        stem = access.removeprefix(RLS_ACCESS_STEM_PREFIX)
+        if RLS_STEM_RE.fullmatch(stem):
+            return "sso_" + stem
     raise Unauthorized("Invalid stacklet:rls_access claim")
 
 
