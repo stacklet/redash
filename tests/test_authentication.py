@@ -550,12 +550,12 @@ class TestJWTAuthentication(BaseTestCase):
     def test_jwt_sets_db_role_from_claims(self):
         cases = [
             # (db_role before, claims, db_role after)
-            # a stem is up to 20 sanitised characters, `_` and 6 hex characters
-            (None, {"stacklet:rls_access": "jane_doe_example_com_a1b2c3"}, "sso_jane_doe_example_com_a1b2c3"),
+            # a stem is up to 20 sanitised characters, `_` and 6 hex characters, after `stem:`
+            (None, {"stacklet:rls_access": "stem:jane_doe_example_com_a1b2c3"}, "sso_jane_doe_example_com_a1b2c3"),
             # the new claim wins over the legacy one
             (
                 None,
-                {"stacklet:rls_access": "jane_a1b2c3", "stacklet:db_role": "sso_other_d4e5f6"},
+                {"stacklet:rls_access": "stem:jane_a1b2c3", "stacklet:db_role": "sso_other_d4e5f6"},
                 "sso_jane_a1b2c3",
             ),
             # unrestricted clears a previously stored role
@@ -578,11 +578,16 @@ class TestJWTAuthentication(BaseTestCase):
         malformed = (
             "",
             "jane",
-            "Jane_a1b2c3",
-            "jane_a1b2c",
-            "jane_a1b2c3\n",
-            "sso_jane_a1b2cz",
-            "a" * 21 + "_a1b2c3",
+            "stem:",
+            "stem:jane",
+            "stem:Jane_a1b2c3",
+            "stem:jane_a1b2c",
+            "stem:jane_a1b2c3\n",
+            "stem:sso_jane_a1b2cz",
+            "stem:" + "a" * 21 + "_a1b2c3",
+            "Stem:jane_a1b2c3",
+            # the stem alone, as the claim used to carry it
+            "jane_a1b2c3",
             None,
             123,
         )
