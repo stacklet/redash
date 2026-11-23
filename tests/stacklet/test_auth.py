@@ -2,6 +2,7 @@
 
 from unittest import mock
 
+import pytest
 import sqlalchemy
 
 from redash.stacklet.auth import get_db, get_env_db
@@ -59,6 +60,25 @@ class TestGetDb:
         assert hasattr(engine, "_execution_options")
         assert "schema_translate_map" in engine._execution_options
         assert engine._execution_options["schema_translate_map"][None] == schema
+
+    @mock.patch("redash.stacklet.auth.sqlalchemy.create_engine")
+    def test_puts_schema_first_in_search_path(self, mock_create_engine):
+        """The session's search_path leads with the schema, so unqualified DDL lands in it."""
+        get_db(dburi="postgresql://user:pass@localhost:5432/testdb", schema="custom_schema")
+
+        _, kwargs = mock_create_engine.call_args
+        assert kwargs["connect_args"] == {"options": "-csearch_path=custom_schema,public"}
+
+    @mock.patch("redash.stacklet.auth.sqlalchemy.create_engine")
+    def test_leaves_search_path_alone_without_schema(self, mock_create_engine):
+        get_db(dburi="postgresql://user:pass@localhost:5432/testdb")
+
+        _, kwargs = mock_create_engine.call_args
+        assert "connect_args" not in kwargs
+
+    def test_rejects_a_schema_that_is_not_a_plain_name(self):
+        with pytest.raises(ValueError):
+            get_db(dburi="postgresql://user:pass@localhost:5432/testdb", schema="a b")
 
 
 class TestGetEnvDb:

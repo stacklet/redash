@@ -47,7 +47,10 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False, schema=None):
 
     dbcreds (optional) AWS Secrets Manager ARN to load a {user: .., password: ..} JSON credential
     disable_iam_auth (optional, default: False) disable attempts to perform IAM auth
-    schema (optional) PostgreSQL schema to use for table operations
+    schema (optional) PostgreSQL schema to use for table operations. Also leads the
+        session's search_path (before public), so that unqualified DDL and lookups, such
+        as the parse_websearch function sqlalchemy-searchable creates, land in it whatever
+        the database or role default is.
     """
     if dburi is None:
         return None
@@ -62,7 +65,11 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False, schema=None):
 
     # Add schema translation if schema is provided
     if schema:
+        if not schema.isidentifier():
+            # The value goes into a space-separated libpq options string.
+            raise ValueError(f"not a plain schema name: {schema!r}")
         params["execution_options"] = {"schema_translate_map": {None: schema}}
+        params["connect_args"] = {"options": f"-csearch_path={schema},public"}
 
     if not disable_iam_auth and iam_auth == "true":
         backend = url.get_backend_name()
