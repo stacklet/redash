@@ -69,7 +69,7 @@ def get_db(dburi, dbcreds=None, disable_iam_auth=False, schema=None):
             # The value goes into a space-separated libpq options string.
             raise ValueError(f"not a plain schema name: {schema!r}")
         params["execution_options"] = {"schema_translate_map": {None: schema}}
-        params["connect_args"] = {"options": f"-csearch_path={schema},public"}
+        params["connect_args"] = {"options": f"-csearch_path=\"{schema}\",public"}
 
     if not disable_iam_auth and iam_auth == "true":
         backend = url.get_backend_name()

@@ -67,7 +67,7 @@ class TestGetDb:
         get_db(dburi="postgresql://user:pass@localhost:5432/testdb", schema="custom_schema")
 
         _, kwargs = mock_create_engine.call_args
-        assert kwargs["connect_args"] == {"options": "-csearch_path=custom_schema,public"}
+        assert kwargs["connect_args"] == {"options": "-csearch_path=\"custom_schema\",public"}
 
     @mock.patch("redash.stacklet.auth.sqlalchemy.create_engine")
     def test_leaves_search_path_alone_without_schema(self, mock_create_engine):
