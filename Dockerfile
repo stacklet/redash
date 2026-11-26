@@ -122,6 +122,9 @@ RUN chown redash /app
 
 # Remove build-only packages to reduce CVE surface area.
 # Re-install the runtime .so counterparts explicitly so autoremove doesn't orphan them.
+# apt-get upgrade picks up Debian security patches even when the upstream base
+# image hasn't been refreshed; this layer follows the COPY of the source, so it
+# reruns on every build.
 RUN SUDO_FORCE_REMOVE=yes apt-get remove -y --purge \
       build-essential g++ pkg-config git-core git curl gnupg unzip pwgen sudo \
       libffi-dev libssl-dev libpq-dev default-libmysqlclient-dev \
@@ -137,6 +140,7 @@ RUN SUDO_FORCE_REMOVE=yes apt-get remove -y --purge \
       libsybdb5 \
       libgssapi-krb5-2 \
       libodbc2 && \
+    ACCEPT_EULA=Y apt-get upgrade -y && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /etc/poetry

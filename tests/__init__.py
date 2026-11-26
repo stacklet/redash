@@ -64,6 +64,7 @@ class BaseTestCase(TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self):
+        db.session.remove()
         db.engine.dispose()
         self.app_ctx.pop()
         redis_connection.flushdb()
