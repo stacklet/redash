@@ -99,6 +99,7 @@ filelock = ">=3.20.3"
 marshmallow = ">=3.26.2"
 pyasn1 = ">=0.6.5"
 oauthlib = ">=4.0.1"
+certifi = ">=2026.10.19"
 mako = ">=1.4.3"
 setuptools = ">=81.0.0,<82"
 
